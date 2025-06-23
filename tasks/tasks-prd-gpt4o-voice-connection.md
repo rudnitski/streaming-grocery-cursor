@@ -37,7 +37,7 @@
   - [x] 2.2 Create `ResponseDisplay` component for showing real-time AI responses
   - [x] 2.3 Create `ErrorDisplay` component for error messages
   - [x] 2.4 Implement `useAudioRecorder` hook for browser audio capture
-  - [ ] 2.5 Integrate components into `page.tsx` with minimal UI
+  - [x] 2.5 Integrate components into `page.tsx` with minimal UI
 
 - [ ] 3.0 Implement backend proxy and WebRTC signaling
   - [ ] 3.1 Create API route for WebRTC offer/answer signaling (`api/webrtc/offer.ts`)
