@@ -11,8 +11,8 @@
 - `src/src/app/utils/webrtcUtils.ts` - Utility functions for WebRTC signaling and session management.
 - `src/src/app/types/audio.ts` - TypeScript types for audio data and events.
 - `src/src/app/types/webrtc.ts` - TypeScript types for WebRTC signaling and session state.
-- `src/src/app/api/webrtc/offer.ts` - API route for handling WebRTC offer/answer signaling.
-- `src/src/app/api/openai/relay.ts` - API route for proxying audio and signaling to OpenAI GPT-4o.
+- `src/src/app/api/webrtc/offer.ts` - (to be created) API route for handling WebRTC offer/answer signaling between frontend and backend.
+- `src/src/app/api/openai/relay.ts` - (to be created) API route for relaying audio and signaling between frontend and OpenAI GPT-4o.
 - `src/src/app/__tests__/VoiceRecorder.test.tsx` - Unit tests for the VoiceRecorder component.
 - `src/src/app/__tests__/ResponseDisplay.test.tsx` - Unit tests for the ResponseDisplay component.
 - `src/src/app/__tests__/ErrorDisplay.test.tsx` - Unit tests for the ErrorDisplay component.
@@ -40,8 +40,8 @@
   - [x] 2.5 Integrate components into `page.tsx` with minimal UI
 
 - [ ] 3.0 Implement backend proxy and WebRTC signaling
-  - [ ] 3.1 Create API route for WebRTC offer/answer signaling (`api/webrtc/offer.ts`)
-  - [ ] 3.2 Implement backend logic for relaying audio and signaling between frontend and OpenAI
+  - [x] 3.1 Create API route for WebRTC offer/answer signaling (`api/webrtc/offer.ts`)
+  - [ ] 3.2 Implement backend logic for relaying audio and signaling between frontend and OpenAI (in progress)
   - [ ] 3.3 Ensure API key is never exposed to the frontend
 
 - [ ] 4.0 Integrate with OpenAI GPT-4o realtime API via WebRTC
