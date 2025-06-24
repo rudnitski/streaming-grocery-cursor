@@ -1,3 +1,22 @@
+# ignore every generated JS + source‑map
+**/*.js
+**/*.js.map
+
+# ────────────────
+# Exceptions – KEEP
+# ────────────────
+!next.config.mjs
+!tailwind.config.js
+!jest.config.js
+!scripts/**/*.js
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
 # Local environment variables
 .env.local 
 node_modules
