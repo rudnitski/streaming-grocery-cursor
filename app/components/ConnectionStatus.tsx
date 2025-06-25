@@ -21,7 +21,7 @@ export default function ConnectionStatus({
           icon: '⚪', 
           text: 'Not Connected', 
           color: '#666',
-          description: 'Click "Start WebRTC Connection" to begin'
+          description: 'Click "Start Recording" to begin'
         };
       case 'connecting':
         return { 

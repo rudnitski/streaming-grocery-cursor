@@ -1,38 +1,66 @@
 'use client';
-import React, { useState } from 'react';
-import VoiceRecorder from './components/VoiceRecorder';
-import ResponseDisplay from './components/ResponseDisplay';
+import React, { useState, useRef } from 'react';
+import VoiceConnection, { VoiceConnectionRef } from './components/VoiceConnection';
 import ErrorDisplay from './components/ErrorDisplay';
 import ConnectionStatus from './components/ConnectionStatus';
-import { useAudioRecorder } from './hooks/useAudioRecorder';
 import { useWebRTC } from './hooks/useWebRTC';
 
 export default function Home() {
-  const { recording, audioBlob, error: audioError, start, stop } = useAudioRecorder();
   const [response, setResponse] = useState('');
+  const voiceConnectionRef = useRef<VoiceConnectionRef>(null);
+  
   const {
     connectionState,
     error: webrtcError,
     aiResponse,
     isProcessing,
     startConnection,
+    stopConnection,
     sendMessage,
   } = useWebRTC({
     onSessionUpdate: (event) => {
       // Optionally handle session.update confirmation
     },
     onError: (err) => {
-      // Optionally handle errors
+      // Handle WebRTC errors by notifying the VoiceConnection component
+      console.log('[Home] WebRTC error:', err);
+      if (voiceConnectionRef.current) {
+        voiceConnectionRef.current.setConnectionError(err);
+      }
     },
   });
 
-  // Loading indicator for connection
+  // Connection state helpers
   const isConnecting = connectionState === 'connecting' || connectionState === 'new';
   const isConnected = connectionState === 'connected';
   const isDisconnected = connectionState === 'disconnected' || connectionState === 'closed' || connectionState === 'failed';
-  const isLoadingResponse = isConnected && !aiResponse;
 
-  // Placeholder: In the future, send audioBlob to backend and update response
+  const handleVoiceStart = async () => {
+    try {
+      await startConnection();
+      // Notify VoiceConnection when connection is successful
+      if (voiceConnectionRef.current) {
+        voiceConnectionRef.current.setConnected();
+      }
+    } catch (err: any) {
+      console.error('[Home] Failed to start connection:', err);
+      if (voiceConnectionRef.current) {
+        voiceConnectionRef.current.setConnectionError(err.message || 'Connection failed');
+      }
+    }
+  };
+
+  const handleVoiceStop = () => {
+    stopConnection();
+  };
+
+  const handleConnectionSuccess = () => {
+    console.log('[Home] Connection success callback called');
+  };
+
+  const handleConnectionError = (error: string) => {
+    console.log('[Home] Connection error callback called:', error);
+  };
 
   return (
     <main style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
@@ -40,42 +68,23 @@ export default function Home() {
       
       <ConnectionStatus 
         connectionState={connectionState}
-        isRecording={recording}
+        isRecording={isConnected}
         isProcessing={isProcessing}
         hasResponse={!!aiResponse}
       />
       
-      <div style={{ marginBottom: '20px' }}>
-        <button 
-          onClick={startConnection} 
-          disabled={isConnecting || isConnected}
-          style={{
-            padding: '12px 24px',
-            fontSize: '16px',
-            backgroundColor: isConnected ? '#34c759' : isConnecting ? '#ff9500' : '#007aff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: isConnecting || isConnected ? 'not-allowed' : 'pointer',
-            opacity: isConnecting || isConnected ? 0.7 : 1
-          }}
-        >
-          {isConnecting ? 'Connecting...' : isConnected ? '✓ Connected' : 'Start WebRTC Connection'}
-        </button>
+      <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+        <VoiceConnection
+          ref={voiceConnectionRef}
+          onStart={handleVoiceStart}
+          onStop={handleVoiceStop}
+          onConnectionSuccess={handleConnectionSuccess}
+          onConnectionFailed={handleConnectionError}
+          onError={(error) => console.error('[Home] VoiceConnection error:', error)}
+        />
       </div>
       
-      <ErrorDisplay error={audioError || webrtcError || ''} />
-      <VoiceRecorder
-        onStart={() => {
-          start();
-          startConnection(); // Start WebRTC connection when recording starts
-        }}
-        onStop={(blob) => {
-          stop();
-          // Placeholder: setResponse('AI response will appear here');
-        }}
-        onError={() => {}}
-      />
+      <ErrorDisplay error={webrtcError || ''} />
       
       <div style={{ 
         marginTop: '20px',
@@ -98,13 +107,12 @@ export default function Home() {
             color: '#666',
             fontStyle: 'italic'
           }}>
-            {isProcessing ? 'AI is thinking...' : 'No response yet. Start recording to interact with the AI.'}
+            {isProcessing ? 'AI is thinking...' : 
+             isConnected ? 'Connected and listening. Start speaking!' :
+             'Click "Start Recording" to begin your conversation with the AI.'}
           </div>
         )}
       </div>
-      
-      <ResponseDisplay response={response} />
-      {/* Placeholder: Add UI to send messages over the data channel if needed */}
     </main>
   );
 }

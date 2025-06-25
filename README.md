@@ -4,9 +4,13 @@ A Next.js application demonstrating real-time voice interaction with OpenAI's GP
 
 ## Features
 
+- **One-Click Voice Interaction**: Single button interface that handles microphone permission, connection, and recording
+- **Smart Permission Management**: Requests microphone access only once, remembers permission for future use
 - **Real-time Voice Input**: Capture audio from your microphone and stream it directly to GPT-4o
 - **Live AI Responses**: See GPT-4o's responses appear in real-time as they're generated
 - **WebRTC Integration**: Low-latency audio streaming using WebRTC technology
+- **Visual State Feedback**: Dynamic button states with color coding and animations
+- **Auto-Recording**: Automatically starts listening when connection is established
 - **Error Handling**: Comprehensive error handling for microphone access, API failures, and connection issues
 - **Secure API Management**: OpenAI API keys are kept secure on the backend
 
@@ -53,11 +57,31 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### 4. Using the Voice Feature
 
-1. Click the "Start Recording" button to begin voice capture
-2. Allow microphone access when prompted by your browser
-3. Speak into your microphone
-4. Watch as GPT-4o's responses appear in real-time
-5. Click "Stop Recording" to end the session
+1. **First Time Use**:
+   - Click the "Start Recording" button
+   - Grant microphone permission when prompted by your browser
+   - The app will automatically connect to GPT-4o and start listening
+
+2. **Subsequent Uses**:
+   - Click "Start Recording" to instantly connect and start recording
+   - No permission request needed (already granted)
+
+3. **During Conversation**:
+   - Speak naturally into your microphone
+   - Watch as GPT-4o's responses appear in real-time
+   - Button shows "Stop Recording" with a pulsing animation
+
+4. **Ending Session**:
+   - Click "Stop Recording" to cleanly disconnect
+   - Connection status updates to show disconnected state
+
+**Button States**:
+- **"Start Recording"** - Ready to begin (green)
+- **"Requesting Permission..."** - Asking for microphone access (orange)
+- **"Connecting..."** - Establishing WebRTC connection (orange)
+- **"Stop Recording"** - Active and listening (red with pulse animation)
+- **"Stopping..."** - Disconnecting (orange)
+- **"Error - Try Again"** - Something went wrong (red)
 
 ## Project Structure
 
@@ -70,8 +94,8 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 │   ├── components/
 │   │   ├── ConnectionStatus.tsx      # Connection status indicator
 │   │   ├── ErrorDisplay.tsx         # Error message display
-│   │   ├── ResponseDisplay.tsx       # AI response display
-│   │   └── VoiceRecorder.tsx         # Voice recording controls
+│   │   ├── VoiceConnection.tsx       # Unified voice recording controls
+│   │   └── VoiceRecorder.tsx         # Legacy voice recording component
 │   ├── hooks/
 │   │   ├── useAudioRecorder.ts       # Audio recording hook
 │   │   └── useWebRTC.ts              # WebRTC connection hook
@@ -101,11 +125,11 @@ The application uses WebRTC for real-time audio streaming:
 
 ### Key Components
 
-- **VoiceRecorder**: Manages microphone access and recording controls
-- **ResponseDisplay**: Shows real-time AI responses with streaming text
-- **ConnectionStatus**: Displays current connection state and errors
-- **useWebRTC Hook**: Manages WebRTC connection lifecycle
-- **useAudioRecorder Hook**: Handles browser audio capture
+- **VoiceConnection**: Unified component that manages microphone permission, WebRTC connection, and recording states with a single button interface
+- **ConnectionStatus**: Displays current connection state with visual indicators and status messages
+- **ErrorDisplay**: Shows error messages with automatic dismissal and user-friendly formatting
+- **useWebRTC Hook**: Manages WebRTC connection lifecycle with connect/disconnect functionality
+- **useAudioRecorder Hook**: Handles browser audio capture and streaming
 
 ## Error Handling
 

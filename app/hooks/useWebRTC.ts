@@ -189,6 +189,27 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     }
   };
 
+  // Call this to stop the connection
+  const stopConnection = () => {
+    console.log('[WebRTC] Stopping connection...');
+    setConnectionState('disconnected');
+    setError(null);
+    setAIResponse('');
+    setIsProcessing(false);
+    
+    if (dataChannelRef.current) {
+      dataChannelRef.current.close();
+      dataChannelRef.current = null;
+    }
+    
+    if (peerRef.current) {
+      peerRef.current.close();
+      peerRef.current = null;
+    }
+    
+    console.log('[WebRTC] Connection stopped');
+  };
+
   // Function to send a message over the data channel
   const sendMessage = (msg: any) => {
     if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
@@ -214,6 +235,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     aiResponse,
     isProcessing,
     startConnection,
+    stopConnection,
     sendMessage,
   };
 } 
