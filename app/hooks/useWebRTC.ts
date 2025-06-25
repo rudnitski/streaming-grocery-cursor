@@ -11,6 +11,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   const [connectionState, setConnectionState] = useState<string>('new');
   const [error, setError] = useState<string | null>(null);
   const [aiResponse, setAIResponse] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
 
@@ -59,6 +60,12 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
         try {
           const msg = JSON.parse(event.data);
           console.log('[WebRTC] Data channel message:', msg);
+          
+          // Add detailed logging for response events
+          if (msg.type === 'response.done' || msg.type === 'response.created') {
+            console.log('[WebRTC] Response event details:', JSON.stringify(msg, null, 2));
+          }
+          
           // Handle different event types from OpenAI
           if (msg.type === 'response.text.delta' && msg.delta) {
             setAIResponse((prev) => prev + msg.delta);
@@ -68,10 +75,84 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             setAIResponse((prev) => prev + msg.delta);
           } else if (msg.type === 'session.error' && msg.error) {
             setError(msg.error.message || 'Session error');
-          } else if (msg.type === 'response.created' && msg.response && msg.response.text) {
-            setAIResponse((prev) => prev + msg.response.text);
-          } else if (msg.type === 'response.done' && msg.response && msg.response.text) {
-            setAIResponse((prev) => prev + msg.response.text + '\n');
+          } else if (msg.type === 'response.created' && msg.response) {
+            // Log the full response structure
+            console.log('[WebRTC] Response created structure:', msg.response);
+            setIsProcessing(true); // AI is now processing
+            if (msg.response.output && msg.response.output.length > 0) {
+              const textOutput = msg.response.output.find((item: any) => item.type === 'message' && item.message?.content);
+              if (textOutput && textOutput.message.content) {
+                const textContent = textOutput.message.content.find((c: any) => c.type === 'text');
+                if (textContent) {
+                  setAIResponse((prev) => prev + textContent.text);
+                }
+              }
+            }
+          } else if (msg.type === 'response.done' && msg.response) {
+            // Log the full response structure
+            console.log('[WebRTC] Response done structure:', msg.response);
+            setIsProcessing(false); // AI finished processing
+            
+            // Check if the response failed and show error
+            if (msg.response.status === 'failed' && msg.response.status_details?.error) {
+              const errorMessage = msg.response.status_details.error.message;
+              let userFriendlyError = errorMessage;
+              
+              // Handle rate limit errors specifically
+              if (errorMessage.includes('Rate limit reached')) {
+                const match = errorMessage.match(/Please try again in ([\d.]+)s/);
+                const waitTime = match ? match[1] : '2';
+                userFriendlyError = `Rate limit reached. Please wait ${waitTime} seconds before trying again.`;
+              }
+              
+              console.error('[WebRTC] API Error:', errorMessage);
+              setError(userFriendlyError);
+              setIsProcessing(false); // Stop processing on error
+              return;
+            }
+            
+            // Check if the response was cancelled (common with turn detection)
+            if (msg.response.status === 'cancelled') {
+              const reason = msg.response.status_details?.reason || 'unknown';
+              console.log(`[WebRTC] Response cancelled: ${reason}`);
+              setIsProcessing(false); // Stop processing on cancellation
+              // Don't show error for cancelled responses due to turn detection - this is normal
+              if (reason === 'turn_detected') {
+                console.log('[WebRTC] Response cancelled due to turn detection (user started speaking again)');
+              }
+              return;
+            }
+            
+            if (msg.response.output && msg.response.output.length > 0) {
+              const textOutput = msg.response.output.find((item: any) => item.type === 'message' && item.message?.content);
+              if (textOutput && textOutput.message.content) {
+                const textContent = textOutput.message.content.find((c: any) => c.type === 'text');
+                if (textContent) {
+                  setAIResponse((prev) => prev + textContent.text + '\n');
+                }
+              }
+            }
+          } else if (msg.type === 'response.output_item.added' && msg.item) {
+            // Handle individual output items being added
+            console.log('[WebRTC] Output item added:', msg.item);
+            if (msg.item.type === 'message' && msg.item.message?.content) {
+              const textContent = msg.item.message.content.find((c: any) => c.type === 'text');
+              if (textContent) {
+                setAIResponse((prev) => prev + textContent.text);
+              }
+            }
+          } else if (msg.type === 'response.content_part.added' && msg.part) {
+            // Handle content parts being added
+            console.log('[WebRTC] Content part added:', msg.part);
+            if (msg.part.type === 'text') {
+              setAIResponse((prev) => prev + msg.part.text);
+            }
+          } else if (msg.type === 'response.content_part.done' && msg.part) {
+            // Handle content parts being completed
+            console.log('[WebRTC] Content part done:', msg.part);
+            if (msg.part.type === 'text') {
+              setAIResponse((prev) => prev + msg.part.text);
+            }
           }
           options.onMessage && options.onMessage(msg);
         } catch (e) {
@@ -131,6 +212,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     connectionState,
     error,
     aiResponse,
+    isProcessing,
     startConnection,
     sendMessage,
   };

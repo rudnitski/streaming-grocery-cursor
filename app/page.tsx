@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import VoiceRecorder from './components/VoiceRecorder';
 import ResponseDisplay from './components/ResponseDisplay';
 import ErrorDisplay from './components/ErrorDisplay';
+import ConnectionStatus from './components/ConnectionStatus';
 import { useAudioRecorder } from './hooks/useAudioRecorder';
 import { useWebRTC } from './hooks/useWebRTC';
 
@@ -13,6 +14,7 @@ export default function Home() {
     connectionState,
     error: webrtcError,
     aiResponse,
+    isProcessing,
     startConnection,
     sendMessage,
   } = useWebRTC({
@@ -33,17 +35,35 @@ export default function Home() {
   // Placeholder: In the future, send audioBlob to backend and update response
 
   return (
-    <main>
-      <h1>Hello world</h1>
-      <button onClick={startConnection} disabled={isConnecting || isConnected}>
-        {isConnecting ? 'Connecting...' : isConnected ? 'Connected' : 'Start WebRTC Connection'}
-      </button>
-      <div>
-        Connection state: <b>{connectionState}</b>
-        {isConnecting && <span style={{ marginLeft: 8 }}>🔄 Connecting...</span>}
-        {isConnected && <span style={{ marginLeft: 8, color: 'green' }}>🟢 Connected</span>}
-        {isDisconnected && <span style={{ marginLeft: 8, color: 'red' }}>🔴 Disconnected</span>}
+    <main style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>GPT-4o Voice Assistant</h1>
+      
+      <ConnectionStatus 
+        connectionState={connectionState}
+        isRecording={recording}
+        isProcessing={isProcessing}
+        hasResponse={!!aiResponse}
+      />
+      
+      <div style={{ marginBottom: '20px' }}>
+        <button 
+          onClick={startConnection} 
+          disabled={isConnecting || isConnected}
+          style={{
+            padding: '12px 24px',
+            fontSize: '16px',
+            backgroundColor: isConnected ? '#34c759' : isConnecting ? '#ff9500' : '#007aff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: isConnecting || isConnected ? 'not-allowed' : 'pointer',
+            opacity: isConnecting || isConnected ? 0.7 : 1
+          }}
+        >
+          {isConnecting ? 'Connecting...' : isConnected ? '✓ Connected' : 'Start WebRTC Connection'}
+        </button>
       </div>
+      
       <ErrorDisplay error={audioError || webrtcError || ''} />
       <VoiceRecorder
         onStart={() => {
@@ -56,11 +76,33 @@ export default function Home() {
         }}
         onError={() => {}}
       />
-      <div>
-        <b>AI Response:</b>
-        {isLoadingResponse && <span style={{ marginLeft: 8 }}>⏳ Waiting for response...</span>}
-        <div>{aiResponse}</div>
+      
+      <div style={{ 
+        marginTop: '20px',
+        padding: '16px',
+        border: '1px solid #e0e0e0',
+        borderRadius: '8px',
+        backgroundColor: '#f9f9f9'
+      }}>
+        <h3 style={{ margin: '0 0 12px 0', color: '#333' }}>AI Response:</h3>
+        {aiResponse ? (
+          <div style={{ 
+            whiteSpace: 'pre-wrap',
+            lineHeight: '1.5',
+            color: '#333'
+          }}>
+            {aiResponse}
+          </div>
+        ) : (
+          <div style={{ 
+            color: '#666',
+            fontStyle: 'italic'
+          }}>
+            {isProcessing ? 'AI is thinking...' : 'No response yet. Start recording to interact with the AI.'}
+          </div>
+        )}
       </div>
+      
       <ResponseDisplay response={response} />
       {/* Placeholder: Add UI to send messages over the data channel if needed */}
     </main>
