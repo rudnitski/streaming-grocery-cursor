@@ -3,36 +3,35 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 interface VoiceConnectionProps {
-  onStart?: () => void;
-  onStop?: () => void;
+  onStartConnection?: () => Promise<void>;
+  onStopConnection?: () => void;
+  connectionState?: string;
+  isProcessing?: boolean;
   onError?: (error: string) => void;
   onPermissionGranted?: () => void;
   onPermissionDenied?: (error: string) => void;
-  onConnectionSuccess?: () => void;
-  onConnectionFailed?: (error: string) => void;
 }
 
 export interface VoiceConnectionRef {
   setConnected: () => void;
   setConnectionError: (error: string) => void;
+  stopConnection: () => void;
 }
 
 type ConnectionState = 'idle' | 'requesting-permission' | 'connecting' | 'connected' | 'stopping' | 'error';
 
 const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({ 
-  onStart, 
-  onStop, 
+  onStartConnection, 
+  onStopConnection, 
+  connectionState = 'disconnected',
+  isProcessing = false,
   onError,
   onPermissionGranted,
-  onPermissionDenied,
-  onConnectionSuccess,
-  onConnectionFailed
+  onPermissionDenied
 }, ref) => {
   const [state, setState] = useState<ConnectionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [hasPermission, setHasPermission] = useState<boolean>(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   // Check if we already have microphone permission
   useEffect(() => {
@@ -43,210 +42,158 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
           setHasPermission(true);
         }
       } catch (err) {
-        // Permissions API not supported, we'll check when user clicks
         console.log('[VoiceConnection] Permissions API not supported');
       }
     };
     checkPermission();
   }, []);
 
+  // Update internal state based on external connection state
+  useEffect(() => {
+    if (connectionState === 'connected') {
+      setState('connected');
+    } else if (connectionState === 'connecting') {
+      setState('connecting');
+    } else if (connectionState === 'disconnected' || connectionState === 'closed') {
+      setState('idle');
+    }
+  }, [connectionState]);
+
   const requestMicrophonePermission = async (): Promise<boolean> => {
     try {
       setState('requesting-permission');
-      setErrorMessage('');
-      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      
+      // Stop the stream immediately as we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+      
       setHasPermission(true);
       onPermissionGranted?.();
       return true;
     } catch (err: any) {
-      const errorMsg = err.name === 'NotAllowedError' 
-        ? 'Microphone permission denied. Please allow microphone access and try again.'
-        : `Microphone access failed: ${err.message}`;
-      
-      setErrorMessage(errorMsg);
+      console.error('[VoiceConnection] Microphone permission denied:', err);
+      setErrorMessage('Microphone permission denied');
       setState('error');
-      onPermissionDenied?.(errorMsg);
-      onError?.(errorMsg);
-      
-      // Return to idle state after showing error
-      setTimeout(() => {
-        setState('idle');
-        setErrorMessage('');
-      }, 3000);
-      
+      onPermissionDenied?.(err.message || 'Permission denied');
+      onError?.(err.message || 'Permission denied');
       return false;
     }
   };
 
   const handleStart = async () => {
     try {
-      // Step 1: Request microphone permission if not already granted
+      setErrorMessage('');
+      
+      // Request permission if we don't have it
       if (!hasPermission) {
-        const permissionGranted = await requestMicrophonePermission();
-        if (!permissionGranted) {
-          return; // Error handling already done in requestMicrophonePermission
-        }
+        const granted = await requestMicrophonePermission();
+        if (!granted) return;
       }
-
-      // Step 2: Start connecting
+      
       setState('connecting');
-      onStart?.();
       
-      // Simulate connection success (this will be handled by parent component)
-      // The parent will call our success/failure callbacks
-      
+      // Call the external connection handler
+      if (onStartConnection) {
+        await onStartConnection();
+      }
     } catch (err: any) {
-      const errorMsg = `Connection failed: ${err.message}`;
-      setErrorMessage(errorMsg);
+      console.error('[VoiceConnection] Failed to start:', err);
+      setErrorMessage(err.message || 'Failed to start recording');
       setState('error');
-      onConnectionFailed?.(errorMsg);
-      onError?.(errorMsg);
-      
-      // Return to idle state after showing error
-      setTimeout(() => {
-        setState('idle');
-        setErrorMessage('');
-      }, 3000);
+      onError?.(err.message || 'Failed to start recording');
     }
   };
 
   const handleStop = () => {
     setState('stopping');
-    
-    // Clean up media recorder and stream
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current = null;
-    }
-    
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    
-    onStop?.();
-    setState('idle');
+    onStopConnection?.();
   };
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     setConnected: () => {
-      if (state !== 'connected') {
-        setState('connected');
-        onConnectionSuccess?.();
-      }
+      setState('connected');
     },
     setConnectionError: (error: string) => {
-      if (state !== 'error') {
-        setErrorMessage(error);
-        setState('error');
-        onConnectionFailed?.(error);
-        onError?.(error);
-        
-        // Return to idle state after showing error
-        setTimeout(() => {
-          setState('idle');
-          setErrorMessage('');
-        }, 3000);
-      }
+      setErrorMessage(error);
+      setState('error');
+      onError?.(error);
+    },
+    stopConnection: () => {
+      handleStop();
     }
-  }), [state, onConnectionSuccess, onConnectionFailed, onError]);
+  }), [onStopConnection, onError]);
 
   const getButtonText = () => {
-    switch (state) {
-      case 'requesting-permission':
-        return 'Requesting Permission...';
-      case 'connecting':
-        return 'Connecting...';
-      case 'connected':
-        return 'Stop Recording';
-      case 'stopping':
-        return 'Stopping...';
-      case 'error':
-        return 'Error - Try Again';
-      default:
-        return 'Start Recording';
-    }
-  };
-
-  const getButtonColor = () => {
-    switch (state) {
-      case 'requesting-permission':
-        return '#ff9500'; // Orange
-      case 'connecting':
-        return '#007aff'; // Blue
-      case 'connected':
-        return '#ff3b30'; // Red for stop
-      case 'stopping':
-        return '#ff9500'; // Orange
-      case 'error':
-        return '#ff3b30'; // Red
-      default:
-        return '#34c759'; // Green for start
-    }
+    if (state === 'requesting-permission') return 'Requesting Permission...';
+    if (state === 'connecting') return 'Connecting...';
+    if (state === 'connected') return 'Stop Recording';
+    if (state === 'stopping') return 'Stopping...';
+    if (state === 'error') return 'Try Again';
+    return 'Start Recording';
   };
 
   const isButtonDisabled = () => {
-    return ['requesting-permission', 'connecting', 'stopping'].includes(state);
+    return state === 'requesting-permission' || state === 'connecting' || state === 'stopping';
   };
 
   const showPulseAnimation = () => {
-    return state === 'connected';
+    return state === 'connected' || isProcessing;
+  };
+
+  const getButtonClasses = () => {
+    const baseClasses = "relative px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform";
+    
+    if (isButtonDisabled()) {
+      return `${baseClasses} glass-subtle text-white/60 cursor-not-allowed`;
+    }
+    
+    if (state === 'connected') {
+      return `${baseClasses} bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 hover:scale-105 shadow-lg hover:shadow-red-500/25`;
+    }
+    
+    if (state === 'error') {
+      return `${baseClasses} bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 hover:scale-105 shadow-lg hover:shadow-yellow-500/25`;
+    }
+    
+    return `${baseClasses} bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 hover:scale-105 shadow-lg hover:shadow-blue-500/25`;
   };
 
   return (
-    <div style={{ textAlign: 'center' }}>
+    <div className="flex flex-col items-center space-y-4">
       <button
         onClick={state === 'connected' ? handleStop : handleStart}
         disabled={isButtonDisabled()}
-        style={{
-          padding: '16px 32px',
-          fontSize: '18px',
-          fontWeight: '600',
-          backgroundColor: getButtonColor(),
-          color: 'white',
-          border: 'none',
-          borderRadius: '12px',
-          cursor: isButtonDisabled() ? 'not-allowed' : 'pointer',
-          opacity: isButtonDisabled() ? 0.7 : 1,
-          transition: 'all 0.3s ease',
-          minWidth: '200px',
-          position: 'relative',
-          animation: showPulseAnimation() ? 'pulse 2s infinite' : 'none',
-        }}
+        className={`${getButtonClasses()} ${showPulseAnimation() ? 'animate-pulse-glow' : ''}`}
       >
-        {getButtonText()}
+        <div className="flex items-center space-x-3">
+          {state === 'connected' ? (
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+            </svg>
+          )}
+          <span>{getButtonText()}</span>
+        </div>
+        
+        {showPulseAnimation() && (
+          <div className="absolute inset-0 rounded-full bg-white/20 animate-ping"></div>
+        )}
       </button>
       
       {errorMessage && (
-        <div style={{
-          marginTop: '16px',
-          padding: '12px',
-          backgroundColor: '#ffe6e6',
-          border: '1px solid #ff9999',
-          borderRadius: '8px',
-          color: '#cc0000',
-          fontSize: '14px'
-        }}>
-          {errorMessage}
+        <div className="glass-subtle px-4 py-2 rounded-lg animate-scale-in">
+          <p className="text-red-300 text-sm font-medium flex items-center">
+            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            {errorMessage}
+          </p>
         </div>
       )}
-      
-      <style jsx>{`
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(255, 59, 48, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(255, 59, 48, 0);
-          }
-        }
-      `}</style>
     </div>
   );
 });

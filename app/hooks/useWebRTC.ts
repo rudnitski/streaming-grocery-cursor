@@ -4,6 +4,9 @@ interface UseWebRTCOptions {
   onSessionUpdate?: (event: any) => void;
   onError?: (error: string) => void;
   onMessage?: (msg: any) => void;
+  onGroceryExtraction?: (groceryData: any) => void;
+  onTranscriptComplete?: (transcript: string) => void;
+  onTranscriptUpdate?: (transcript: string) => void;
 }
 
 export function useWebRTC(options: UseWebRTCOptions = {}) {
@@ -12,6 +15,9 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   const [error, setError] = useState<string | null>(null);
   const [aiResponse, setAIResponse] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
+  const [functionCallArgs, setFunctionCallArgs] = useState('');
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
 
@@ -38,14 +44,68 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       };
       dataChannel.onopen = () => {
         console.log('[WebRTC] Data channel open');
+        setIsConnected(true);
         // Send session.update event when data channel is open
         const sessionUpdate = {
           type: 'session.update',
           session: {
             voice: 'alloy',
-            instructions: 'You are a helpful AI assistant.',
+            instructions: `You are a grocery shopping assistant. When users mention groceries they want to buy, automatically extract them using the extract_groceries function. CRITICAL: Always preserve the exact language the user spoke the items in - if they say "молоко" keep it as "молоко", if they say "milk" keep it as "milk". Extract items with their quantities and measurements. Listen for items like "I need 2 liters of milk", "мне нужно 500 грамм муки", "add 5 apples", "remove bread", etc. Always call the function when you detect grocery items being mentioned. Be conversational and helpful.`,
             input_audio_format: 'pcm16',
+            input_audio_transcription: {
+              model: 'whisper-1'
+            },
             turn_detection: { type: 'server_vad' },
+            tools: [
+              {
+                type: 'function',
+                name: 'extract_groceries',
+                description: 'Extract grocery items and quantities from user speech. CRITICAL: Preserve the exact language the user spoke the items in.',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          item: {
+                            type: 'string',
+                            description: 'The grocery item name in singular form, in the EXACT same language the user spoke it (e.g., if user says "молоко" keep it as "молоко", if user says "milk" keep it as "milk")'
+                          },
+                          quantity: {
+                            type: 'number',
+                            description: 'The quantity as a number'
+                          },
+                          action: {
+                            type: 'string',
+                            enum: ['add', 'remove', 'modify'],
+                            description: 'The action to perform with this item'
+                          },
+                          measurement: {
+                            type: 'object',
+                            properties: {
+                              value: {
+                                type: 'number',
+                                description: 'The measurement value'
+                              },
+                              unit: {
+                                type: 'string',
+                                description: 'The measurement unit (kg, g, L, mL, pieces, etc.)'
+                              }
+                            },
+                            required: ['value', 'unit']
+                          }
+                        },
+                        required: ['item', 'quantity', 'action']
+                      }
+                    }
+                  },
+                  required: ['items']
+                }
+              }
+            ],
+            tool_choice: 'auto'
           },
         };
         dataChannel.send(JSON.stringify(sessionUpdate));
@@ -59,11 +119,16 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       dataChannel.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          console.log('[WebRTC] Data channel message:', msg);
+          console.log('[WebRTC] Data channel message:', msg.type, msg);
           
           // Add detailed logging for response events
           if (msg.type === 'response.done' || msg.type === 'response.created') {
             console.log('[WebRTC] Response event details:', JSON.stringify(msg, null, 2));
+          }
+          
+          // Log all function call related messages
+          if (msg.type.includes('function_call')) {
+            console.log('[WebRTC] Function call message:', JSON.stringify(msg, null, 2));
           }
           
           // Handle different event types from OpenAI
@@ -73,6 +138,78 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             setAIResponse((prev) => prev + '\n');
           } else if (msg.type === 'response.audio_transcript.delta' && msg.delta) {
             setAIResponse((prev) => prev + msg.delta);
+          } else if (msg.type === 'response.function_call_arguments.delta' && msg.delta) {
+            // Handle function call arguments streaming
+            console.log('[WebRTC] Function call arguments delta:', msg.delta);
+            setFunctionCallArgs((prev) => prev + msg.delta);
+          } else if (msg.type === 'response.function_call_arguments.done' && msg.name) {
+            // Handle completed function call - this is where grocery extraction happens!
+            console.log('[WebRTC] Function call completed:', msg.name, 'Accumulated args:', functionCallArgs);
+            if (msg.name === 'extract_groceries' && functionCallArgs) {
+              try {
+                // Ensure the JSON string is complete before parsing
+                const argsString = functionCallArgs.trim();
+                if (!argsString.startsWith('{') || !argsString.endsWith('}')) {
+                  console.warn('[WebRTC] Incomplete JSON in accumulated args, skipping parse:', argsString);
+                  setFunctionCallArgs('');
+                  return;
+                }
+                
+                const groceryData = JSON.parse(argsString);
+                console.log('[WebRTC] Extracted groceries:', groceryData);
+                // Call the onGroceryExtraction callback if provided
+                if (options.onGroceryExtraction && groceryData.items && Array.isArray(groceryData.items)) {
+                  options.onGroceryExtraction(groceryData.items);
+                }
+                // Reset the function call args accumulator
+                setFunctionCallArgs('');
+              } catch (error) {
+                console.error('[WebRTC] Error parsing grocery data:', error);
+                console.error('[WebRTC] Raw arguments:', functionCallArgs);
+                // Reset the function call args accumulator even on error
+                setFunctionCallArgs('');
+              }
+            }
+          } else if (msg.type === 'response.output_item.added' && msg.item?.type === 'function_call') {
+            // Handle function call start - reset accumulator
+            console.log('[WebRTC] Function call started:', msg.item.name);
+            if (msg.item.name === 'extract_groceries') {
+              setFunctionCallArgs('');
+            }
+          } else if (msg.type === 'response.output_item.done' && msg.item?.type === 'function_call') {
+            // Handle completed function call with final arguments
+            console.log('[WebRTC] Function call item done:', msg.item.name, 'Arguments:', msg.item.arguments);
+            if (msg.item.name === 'extract_groceries' && msg.item.arguments) {
+              try {
+                // Ensure the JSON string is complete before parsing
+                const argsString = msg.item.arguments.trim();
+                if (!argsString.startsWith('{') || !argsString.endsWith('}')) {
+                  console.warn('[WebRTC] Incomplete JSON arguments, skipping parse:', argsString);
+                  return;
+                }
+                
+                const groceryData = JSON.parse(argsString);
+                console.log('[WebRTC] Extracted groceries from item.done:', groceryData);
+                // Call the onGroceryExtraction callback if provided
+                if (options.onGroceryExtraction && groceryData.items && Array.isArray(groceryData.items)) {
+                  options.onGroceryExtraction(groceryData.items);
+                }
+              } catch (error) {
+                console.error('[WebRTC] Error parsing grocery data from item.done:', error);
+                console.error('[WebRTC] Raw arguments:', msg.item.arguments);
+              }
+            }
+          } else if (msg.type === 'conversation.item.input_audio_transcription.completed' && msg.transcript) {
+            // Handle completed transcription for display purposes only
+            console.log('[WebRTC] Input audio transcription completed:', msg.transcript);
+            if (options.onTranscriptComplete) {
+              options.onTranscriptComplete(msg.transcript);
+            }
+          } else if (msg.type === 'conversation.item.input_audio_transcription.delta' && msg.delta) {
+            // Handle partial transcription updates
+            console.log('[WebRTC] Input audio transcription delta:', msg.delta);
+            setCurrentTranscript((prev) => prev + msg.delta);
+            options.onTranscriptUpdate && options.onTranscriptUpdate(currentTranscript + msg.delta);
           } else if (msg.type === 'session.error' && msg.error) {
             setError(msg.error.message || 'Session error');
           } else if (msg.type === 'response.created' && msg.response) {
@@ -196,6 +333,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     setError(null);
     setAIResponse('');
     setIsProcessing(false);
+    setIsConnected(false);
     
     if (dataChannelRef.current) {
       dataChannelRef.current.close();
@@ -234,6 +372,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     error,
     aiResponse,
     isProcessing,
+    isConnected,
     startConnection,
     stopConnection,
     sendMessage,
