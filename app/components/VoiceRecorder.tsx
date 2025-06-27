@@ -26,13 +26,14 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onStart, onStop, onError 
       };
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-        onStop && onStop(audioBlob);
+        onStop?.(audioBlob);
       };
       mediaRecorder.start();
       setRecording(true);
-      onStart && onStart();
-    } catch (err: any) {
-      onError && onError(err.message || 'Microphone access denied');
+      onStart?.();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Microphone access denied';
+      onError?.(message);
     }
   };
 

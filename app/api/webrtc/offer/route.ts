@@ -30,8 +30,9 @@ export async function POST(req: NextRequest) {
 
     const answer = await response.text();
     return NextResponse.json({ answer });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Fetch error:', err);
-    return NextResponse.json({ error: `Fetch error: ${err.message}` }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: `Fetch error: ${message}` }, { status: 500 });
   }
 } 

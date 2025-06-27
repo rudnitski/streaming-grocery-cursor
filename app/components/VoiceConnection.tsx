@@ -70,12 +70,13 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
       setHasPermission(true);
       onPermissionGranted?.();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[VoiceConnection] Microphone permission denied:', err);
       setErrorMessage('Microphone permission denied');
       setState('error');
-      onPermissionDenied?.(err.message || 'Permission denied');
-      onError?.(err.message || 'Permission denied');
+      const message = err instanceof Error ? err.message : 'Permission denied';
+      onPermissionDenied?.(message);
+      onError?.(message);
       return false;
     }
   };
@@ -96,11 +97,12 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
       if (onStartConnection) {
         await onStartConnection();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[VoiceConnection] Failed to start:', err);
-      setErrorMessage(err.message || 'Failed to start recording');
+      const message = err instanceof Error ? err.message : 'Failed to start recording';
+      setErrorMessage(message);
       setState('error');
-      onError?.(err.message || 'Failed to start recording');
+      onError?.(message);
     }
   };
 

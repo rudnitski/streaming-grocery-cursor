@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 interface UseWebRTCOptions {
-  onSessionUpdate?: (event: any) => void;
+  onSessionUpdate?: (event: unknown) => void;
   onError?: (error: string) => void;
-  onMessage?: (msg: any) => void;
-  onGroceryExtraction?: (groceryData: any) => void;
+  onMessage?: (msg: unknown) => void;
+  onGroceryExtraction?: (groceryData: unknown) => void;
   onTranscriptComplete?: (transcript: string) => void;
   onTranscriptUpdate?: (transcript: string) => void;
 }
@@ -217,11 +217,16 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             console.log('[WebRTC] Response created structure:', msg.response);
             setIsProcessing(true); // AI is now processing
             if (msg.response.output && msg.response.output.length > 0) {
-              const textOutput = msg.response.output.find((item: any) => item.type === 'message' && item.message?.content);
-              if (textOutput && textOutput.message.content) {
-                const textContent = textOutput.message.content.find((c: any) => c.type === 'text');
-                if (textContent) {
-                  setAIResponse((prev) => prev + textContent.text);
+              const textOutput = msg.response.output.find((item: unknown) => 
+                item && typeof item === 'object' && 'type' in item && item.type === 'message' && 
+                'message' in item && item.message && typeof item.message === 'object' && 'content' in item.message
+              );
+              if (textOutput && textOutput.message && typeof textOutput.message === 'object' && 'content' in textOutput.message) {
+                const textContent = (textOutput.message as { content: unknown[] }).content.find((c: unknown) => 
+                  c && typeof c === 'object' && 'type' in c && c.type === 'text'
+                );
+                if (textContent && typeof textContent === 'object' && 'text' in textContent) {
+                  setAIResponse((prev) => prev + (textContent as { text: string }).text);
                 }
               }
             }
@@ -261,11 +266,16 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             }
             
             if (msg.response.output && msg.response.output.length > 0) {
-              const textOutput = msg.response.output.find((item: any) => item.type === 'message' && item.message?.content);
-              if (textOutput && textOutput.message.content) {
-                const textContent = textOutput.message.content.find((c: any) => c.type === 'text');
-                if (textContent) {
-                  setAIResponse((prev) => prev + textContent.text + '\n');
+              const textOutput = msg.response.output.find((item: unknown) => 
+                item && typeof item === 'object' && 'type' in item && item.type === 'message' && 
+                'message' in item && item.message && typeof item.message === 'object' && 'content' in item.message
+              );
+              if (textOutput && textOutput.message && typeof textOutput.message === 'object' && 'content' in textOutput.message) {
+                const textContent = (textOutput.message as { content: unknown[] }).content.find((c: unknown) => 
+                  c && typeof c === 'object' && 'type' in c && c.type === 'text'
+                );
+                if (textContent && typeof textContent === 'object' && 'text' in textContent) {
+                  setAIResponse((prev) => prev + (textContent as { text: string }).text + '\n');
                 }
               }
             }
@@ -273,9 +283,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             // Handle individual output items being added
             console.log('[WebRTC] Output item added:', msg.item);
             if (msg.item.type === 'message' && msg.item.message?.content) {
-              const textContent = msg.item.message.content.find((c: any) => c.type === 'text');
-              if (textContent) {
-                setAIResponse((prev) => prev + textContent.text);
+              const textContent = (msg.item.message as { content: unknown[] }).content.find((c: unknown) => 
+                c && typeof c === 'object' && 'type' in c && c.type === 'text'
+              );
+              if (textContent && typeof textContent === 'object' && 'text' in textContent) {
+                setAIResponse((prev) => prev + (textContent as { text: string }).text);
               }
             }
           } else if (msg.type === 'response.content_part.added' && msg.part) {
@@ -319,10 +331,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       console.log('[WebRTC] Received SDP answer from backend', answer);
       await pc.setRemoteDescription({ type: 'answer', sdp: answer });
       console.log('[WebRTC] Remote SDP answer set');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WebRTC] Connection error:', err);
-      setError(err.message || 'WebRTC connection failed');
-      options.onError && options.onError(err.message || 'WebRTC connection failed');
+      const message = err instanceof Error ? err.message : 'WebRTC connection failed';
+      setError(message);
+      options.onError?.(message);
     }
   };
 
@@ -349,7 +362,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   };
 
   // Function to send a message over the data channel
-  const sendMessage = (msg: any) => {
+  const sendMessage = (msg: unknown) => {
     if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
       console.log('[WebRTC] Sending message over data channel', msg);
       dataChannelRef.current.send(JSON.stringify(msg));

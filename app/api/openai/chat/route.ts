@@ -26,11 +26,11 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(completion);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('OpenAI API error:', error);
     
     // Handle rate limiting
-    if (error.status === 429) {
+    if (error && typeof error === 'object' && 'status' in error && error.status === 429) {
       return NextResponse.json(
         { error: 'Rate limit exceeded. Please try again later.' },
         { status: 429 }
@@ -38,10 +38,10 @@ export async function POST(request: NextRequest) {
     }
     
     // Handle other OpenAI errors
-    if (error.status) {
+    if (error && typeof error === 'object' && 'status' in error && error.status) {
       return NextResponse.json(
-        { error: error.message || 'OpenAI API error' },
-        { status: error.status }
+        { error: (error as { message?: string }).message || 'OpenAI API error' },
+        { status: error.status as number }
       );
     }
     

@@ -26,8 +26,9 @@ export function useAudioRecorder() {
       };
       mediaRecorder.start();
       setRecording(true);
-    } catch (err: any) {
-      setError(err.message || 'Microphone access denied');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Microphone access denied';
+      setError(message);
     }
   };
 
