@@ -15,6 +15,39 @@ export function useGroceryExtraction(): UseGroceryExtractionReturn {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
 
+  const addGroceryItems = useCallback((newItems: GroceryItemWithMeasurement[]) => {
+    setGroceryItems(prevItems => {
+      const updatedItems = [...prevItems];
+      
+      newItems.forEach((newItem) => {
+        const existingIndex = updatedItems.findIndex(
+          existing => existing.item.toLowerCase() === newItem.item.toLowerCase()
+        );
+        
+        if (newItem.action === 'remove') {
+          // Remove item if it exists
+          if (existingIndex !== -1) {
+            updatedItems.splice(existingIndex, 1);
+          }
+        } else if (newItem.action === 'modify' && existingIndex !== -1) {
+          // Update existing item
+          updatedItems[existingIndex] = { ...newItem };
+        } else if (newItem.action === 'add' || !newItem.action) {
+          // Add new item or update quantity if it exists
+          if (existingIndex !== -1) {
+            // Update existing item with new quantity/measurement
+            updatedItems[existingIndex] = { ...newItem };
+          } else {
+            // Add new item
+            updatedItems.push(newItem);
+          }
+        }
+      });
+      
+      return updatedItems;
+    });
+  }, []);
+
   const extractGroceries = useCallback(async (transcript: string) => {
     if (!transcript.trim()) {
       return;
@@ -54,40 +87,7 @@ export function useGroceryExtraction(): UseGroceryExtractionReturn {
     } finally {
       setIsExtracting(false);
     }
-  }, []);
-
-  const addGroceryItems = useCallback((newItems: GroceryItemWithMeasurement[]) => {
-    setGroceryItems(prevItems => {
-      let updatedItems = [...prevItems];
-      
-      newItems.forEach((newItem) => {
-        const existingIndex = updatedItems.findIndex(
-          existing => existing.item.toLowerCase() === newItem.item.toLowerCase()
-        );
-        
-        if (newItem.action === 'remove') {
-          // Remove item if it exists
-          if (existingIndex !== -1) {
-            updatedItems.splice(existingIndex, 1);
-          }
-        } else if (newItem.action === 'modify' && existingIndex !== -1) {
-          // Update existing item
-          updatedItems[existingIndex] = { ...newItem };
-        } else if (newItem.action === 'add' || !newItem.action) {
-          // Add new item or update quantity if it exists
-          if (existingIndex !== -1) {
-            // Update existing item with new quantity/measurement
-            updatedItems[existingIndex] = { ...newItem };
-          } else {
-            // Add new item
-            updatedItems.push(newItem);
-          }
-        }
-      });
-      
-      return updatedItems;
-    });
-  }, []);
+  }, [addGroceryItems]);
 
   const clearGroceryList = useCallback(() => {
     setGroceryItems([]);

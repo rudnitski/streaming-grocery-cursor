@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 
 interface VoiceConnectionProps {
   onStartConnection?: () => Promise<void>;
@@ -106,10 +106,10 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
     }
   };
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     setState('stopping');
     onStopConnection?.();
-  };
+  }, [onStopConnection]);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -124,7 +124,7 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
     stopConnection: () => {
       handleStop();
     }
-  }), [handleStop, onStopConnection, onError]);
+  }), [handleStop, onError]);
 
   const getButtonText = () => {
     if (state === 'requesting-permission') return 'Requesting Permission...';

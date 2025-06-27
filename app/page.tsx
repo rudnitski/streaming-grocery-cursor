@@ -5,10 +5,11 @@ import ErrorDisplay from './components/ErrorDisplay';
 import ConnectionStatus from './components/ConnectionStatus';
 import GroceryList from './components/GroceryList';
 import { useWebRTC } from './hooks/useWebRTC';
+import { GroceryItemWithMeasurement } from './types/grocery';
 
 export default function Home() {
   const [transcriptBuffer, setTranscriptBuffer] = useState('');
-  const [groceryItems, setGroceryItems] = useState<any[]>([]);
+  const [groceryItems, setGroceryItems] = useState<GroceryItemWithMeasurement[]>([]);
   const voiceConnectionRef = useRef<VoiceConnectionRef>(null);
   
   const {
@@ -28,32 +29,32 @@ export default function Home() {
       console.log('[Home] Groceries extracted via function call:', items);
       
       setGroceryItems(prevItems => {
-        let updatedItems = [...prevItems];
+        const updatedItems = [...prevItems];
         
         if (Array.isArray(items)) {
           items.forEach((item: unknown) => {
-            if (item && typeof item === 'object' && 'item' in item && 'action' in item) {
-              const newItem = item as { item: string; action?: string; [key: string]: unknown };
+            if (item && typeof item === 'object' && 'item' in item) {
+              const typedItem = item as GroceryItemWithMeasurement;
               const existingIndex = updatedItems.findIndex(
-                existing => existing.item.toLowerCase() === newItem.item.toLowerCase()
+                existing => existing.item.toLowerCase() === typedItem.item.toLowerCase()
               );
               
-              if (newItem.action === 'remove') {
+              if (typedItem.action === 'remove') {
                 // Remove item if it exists
                 if (existingIndex !== -1) {
                   updatedItems.splice(existingIndex, 1);
                 }
-              } else if (newItem.action === 'modify' && existingIndex !== -1) {
+              } else if (typedItem.action === 'modify' && existingIndex !== -1) {
                 // Update existing item
-                updatedItems[existingIndex] = { ...newItem };
-              } else if (newItem.action === 'add' || !newItem.action) {
+                updatedItems[existingIndex] = typedItem;
+              } else if (typedItem.action === 'add' || !typedItem.action) {
                 // Add new item or update quantity if it exists
                 if (existingIndex !== -1) {
                   // Update existing item with new quantity
-                  updatedItems[existingIndex] = { ...newItem };
+                  updatedItems[existingIndex] = typedItem;
                 } else {
                   // Add new item
-                  updatedItems.push(newItem);
+                  updatedItems.push(typedItem);
                 }
               }
             }
@@ -141,7 +142,7 @@ export default function Home() {
                   Recent Speech
                 </h3>
                 <p className="text-white/80 italic leading-relaxed">
-                  "{transcriptBuffer}"
+                  &quot;{transcriptBuffer}&quot;
                 </p>
               </div>
             )}
@@ -218,7 +219,7 @@ export default function Home() {
             </div>
             <div className="glass-subtle p-4 rounded-lg">
               <div className="font-medium text-white mb-2">2. Speak Naturally</div>
-              <div className="text-sm">Say items like "Add 2 pounds of apples" or "Remove milk"</div>
+              <div className="text-sm">Say items like &quot;Add 2 pounds of apples&quot; or &quot;Remove milk&quot;</div>
             </div>
             <div className="glass-subtle p-4 rounded-lg">
               <div className="font-medium text-white mb-2">3. Watch the Magic</div>
