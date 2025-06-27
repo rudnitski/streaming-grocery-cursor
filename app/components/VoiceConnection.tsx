@@ -124,7 +124,7 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
     stopConnection: () => {
       handleStop();
     }
-  }), [onStopConnection, onError]);
+  }), [handleStop, onStopConnection, onError]);
 
   const getButtonText = () => {
     if (state === 'requesting-permission') return 'Requesting Permission...';
