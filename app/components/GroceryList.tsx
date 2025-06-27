@@ -10,10 +10,6 @@ interface GroceryListProps {
 }
 
 const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) => {
-  const formatMeasurement = (measurement: GroceryItemWithMeasurement['measurement']): string => {
-    if (!measurement) return '';
-    return ` (${measurement.value} ${measurement.unit})`;
-  };
 
 
   if (error) {

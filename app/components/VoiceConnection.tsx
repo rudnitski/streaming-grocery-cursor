@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 interface VoiceConnectionProps {
   onStartConnection?: () => Promise<void>;
@@ -41,7 +41,7 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
         if (permission.state === 'granted') {
           setHasPermission(true);
         }
-      } catch (err) {
+      } catch {
         console.log('[VoiceConnection] Permissions API not supported');
       }
     };

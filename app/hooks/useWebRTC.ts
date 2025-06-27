@@ -109,12 +109,12 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
           },
         };
         dataChannel.send(JSON.stringify(sessionUpdate));
-        options.onSessionUpdate && options.onSessionUpdate(sessionUpdate);
+        options.onSessionUpdate?.(sessionUpdate);
       };
       dataChannel.onerror = (e) => {
         console.error('[WebRTC] Data channel error', e);
         setError('Data channel error');
-        options.onError && options.onError('Data channel error');
+        options.onError?.('Data channel error');
       };
       dataChannel.onmessage = (event) => {
         try {
@@ -209,7 +209,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             // Handle partial transcription updates
             console.log('[WebRTC] Input audio transcription delta:', msg.delta);
             setCurrentTranscript((prev) => prev + msg.delta);
-            options.onTranscriptUpdate && options.onTranscriptUpdate(currentTranscript + msg.delta);
+            options.onTranscriptUpdate?.(currentTranscript + msg.delta);
           } else if (msg.type === 'session.error' && msg.error) {
             setError(msg.error.message || 'Session error');
           } else if (msg.type === 'response.created' && msg.response) {
@@ -303,8 +303,8 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
               setAIResponse((prev) => prev + msg.part.text);
             }
           }
-          options.onMessage && options.onMessage(msg);
-        } catch (e) {
+          options.onMessage?.(msg);
+        } catch {
           console.warn('[WebRTC] Non-JSON or unexpected data channel message', event.data);
         }
       };

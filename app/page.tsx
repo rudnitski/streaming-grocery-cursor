@@ -7,7 +7,6 @@ import GroceryList from './components/GroceryList';
 import { useWebRTC } from './hooks/useWebRTC';
 
 export default function Home() {
-  const [response, setResponse] = useState('');
   const [transcriptBuffer, setTranscriptBuffer] = useState('');
   const [groceryItems, setGroceryItems] = useState<any[]>([]);
   const voiceConnectionRef = useRef<VoiceConnectionRef>(null);
@@ -15,11 +14,9 @@ export default function Home() {
   const {
     connectionState,
     error: webrtcError,
-    aiResponse,
     isProcessing,
     startConnection,
     stopConnection,
-    sendMessage,
   } = useWebRTC({
     onMessage: (msg) => {
       console.log('[Home] WebRTC message:', msg);
@@ -27,36 +24,41 @@ export default function Home() {
     onError: (error) => {
       console.error('[Home] WebRTC error:', error);
     },
-    onGroceryExtraction: (items) => {
+    onGroceryExtraction: (items: unknown) => {
       console.log('[Home] Groceries extracted via function call:', items);
       
       setGroceryItems(prevItems => {
         let updatedItems = [...prevItems];
         
-        items.forEach((newItem: any) => {
-          const existingIndex = updatedItems.findIndex(
-            existing => existing.item.toLowerCase() === newItem.item.toLowerCase()
-          );
-          
-          if (newItem.action === 'remove') {
-            // Remove item if it exists
-            if (existingIndex !== -1) {
-              updatedItems.splice(existingIndex, 1);
+        if (Array.isArray(items)) {
+          items.forEach((item: unknown) => {
+            if (item && typeof item === 'object' && 'item' in item && 'action' in item) {
+              const newItem = item as { item: string; action?: string; [key: string]: unknown };
+              const existingIndex = updatedItems.findIndex(
+                existing => existing.item.toLowerCase() === newItem.item.toLowerCase()
+              );
+              
+              if (newItem.action === 'remove') {
+                // Remove item if it exists
+                if (existingIndex !== -1) {
+                  updatedItems.splice(existingIndex, 1);
+                }
+              } else if (newItem.action === 'modify' && existingIndex !== -1) {
+                // Update existing item
+                updatedItems[existingIndex] = { ...newItem };
+              } else if (newItem.action === 'add' || !newItem.action) {
+                // Add new item or update quantity if it exists
+                if (existingIndex !== -1) {
+                  // Update existing item with new quantity
+                  updatedItems[existingIndex] = { ...newItem };
+                } else {
+                  // Add new item
+                  updatedItems.push(newItem);
+                }
+              }
             }
-          } else if (newItem.action === 'modify' && existingIndex !== -1) {
-            // Update existing item
-            updatedItems[existingIndex] = { ...newItem };
-          } else if (newItem.action === 'add' || !newItem.action) {
-            // Add new item or update quantity if it exists
-            if (existingIndex !== -1) {
-              // Update existing item with new quantity
-              updatedItems[existingIndex] = { ...newItem };
-            } else {
-              // Add new item
-              updatedItems.push(newItem);
-            }
-          }
-        });
+          });
+        }
         
         return updatedItems;
       });
