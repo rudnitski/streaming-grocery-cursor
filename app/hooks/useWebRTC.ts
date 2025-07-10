@@ -22,6 +22,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   const [functionCallArgs, setFunctionCallArgs] = useState('');
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   
   // Audio context for voice effects
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -71,6 +72,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
 
       console.log('[WebRTC] Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream; // Store the stream for cleanup
       console.log('[WebRTC] Microphone access granted, adding audio track', stream.getAudioTracks());
       stream.getAudioTracks().forEach(track => pc.addTrack(track, stream));
 
@@ -405,6 +407,15 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       const message = err instanceof Error ? err.message : 'WebRTC connection failed';
       setError(message);
       options.onError?.(message);
+      
+      // Clean up media stream on error
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => {
+          console.log('[WebRTC] Error cleanup: Stopping media track:', track.kind);
+          track.stop();
+        });
+        mediaStreamRef.current = null;
+      }
     }
   };
 
@@ -417,6 +428,15 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     setIsProcessing(false);
     setIsConnected(false);
     
+    // Stop media stream tracks to release microphone
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => {
+        console.log('[WebRTC] Stopping media track:', track.kind);
+        track.stop();
+      });
+      mediaStreamRef.current = null;
+    }
+    
     if (dataChannelRef.current) {
       dataChannelRef.current.close();
       dataChannelRef.current = null;
@@ -427,7 +447,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       peerRef.current = null;
     }
     
-    console.log('[WebRTC] Connection stopped');
+    console.log('[WebRTC] Connection stopped and microphone released');
   };
 
   // Function to send a message over the data channel
@@ -443,7 +463,14 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      console.log('[WebRTC] Cleaning up peer/data channel');
+      console.log('[WebRTC] Cleaning up peer/data channel and media stream');
+      // Stop media stream tracks
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => {
+          console.log('[WebRTC] Cleanup: Stopping media track:', track.kind);
+          track.stop();
+        });
+      }
       peerRef.current?.close();
       dataChannelRef.current?.close();
     };
