@@ -7,6 +7,8 @@ interface UseWebRTCOptions {
   onGroceryExtraction?: (groceryData: unknown) => void;
   onTranscriptComplete?: (transcript: string) => void;
   onTranscriptUpdate?: (transcript: string) => void;
+  onFunctionCallStart?: () => void;
+  usualGroceries?: string;
 }
 
 export function useWebRTC(options: UseWebRTCOptions = {}) {
@@ -20,6 +22,45 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   const [functionCallArgs, setFunctionCallArgs] = useState('');
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  
+  // Audio context for voice effects
+  const audioContextRef = useRef<AudioContext | null>(null);
+  
+  // Initialize audio context
+  const initAudioContext = () => {
+    if (!audioContextRef.current) {
+      const AudioContextClass = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioContextClass) {
+        audioContextRef.current = new AudioContextClass();
+      }
+    }
+  };
+  
+  // Play voice effect sound
+  const playVoiceEffect = () => {
+    initAudioContext();
+    const audioContext = audioContextRef.current;
+    if (!audioContext) return;
+    
+    // Create a simple notification sound effect
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Create a pleasant notification sound (C major chord)
+    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+    oscillator.type = 'sine';
+    
+    // Fade in and out
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.05);
+    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  };
 
   // Call this to start the connection
   const startConnection = async () => {
@@ -45,22 +86,27 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       dataChannel.onopen = () => {
         console.log('[WebRTC] Data channel open');
         setIsConnected(true);
+        // Create instructions with usual groceries context
+        const usualGroceriesContext = options.usualGroceries 
+          ? `\n\nUSER'S USUAL GROCERIES:\n${options.usualGroceries}\n\nIMPORTANT MATCHING RULE: If an item in the user's speech resembles something in the USER'S USUAL GROCERIES list, prefer using that exact name from the list instead of what you heard. For example, if user says "молоко" and the usual groceries list contains "молоко", use "молоко". If user says "milk" and the list contains "молоко", use "молоко" from the list.`
+          : '';
+        
         // Send session.update event when data channel is open
         const sessionUpdate = {
           type: 'session.update',
           session: {
             voice: 'alloy',
-            instructions: `You are a grocery shopping assistant. When users mention groceries they want to buy, automatically extract them using the extract_groceries function. CRITICAL: Always preserve the exact language the user spoke the items in - if they say "молоко" keep it as "молоко", if they say "milk" keep it as "milk". Extract items with their quantities and measurements. Listen for items like "I need 2 liters of milk", "мне нужно 500 грамм муки", "add 5 apples", "remove bread", etc. Always call the function when you detect grocery items being mentioned. Be conversational and helpful.`,
+            instructions: `You are a grocery shopping assistant. When users mention groceries they want to buy, automatically extract them using the extract_groceries function. CRITICAL: Always preserve the exact language the user spoke the items in - if they say "молоко" keep it as "молоко", if they say "milk" keep it as "milk". Extract items with their quantities and measurements. Listen for items like "I need 2 liters of milk", "мне нужно 500 грамм муки", "add 5 apples", "remove bread", etc. Always call the function when you detect grocery items being mentioned. Be conversational and helpful.${usualGroceriesContext}`,
             input_audio_format: 'pcm16',
             input_audio_transcription: {
-              model: 'whisper-1'
+              model: 'gpt-4o-mini-transcribe'
             },
             turn_detection: { type: 'server_vad' },
             tools: [
               {
                 type: 'function',
                 name: 'extract_groceries',
-                description: 'Extract grocery items and quantities from user speech. CRITICAL: Preserve the exact language the user spoke the items in.',
+                description: 'Extract grocery items and quantities from user speech in real-time. Call this function as soon as ANY grocery items are identified, don\'t wait for complete sentences. CRITICAL: If an item resembles something in the USER\'S USUAL GROCERIES list, prefer using that exact name from the list.',
                 parameters: {
                   type: 'object',
                   properties: {
@@ -71,7 +117,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
                         properties: {
                           item: {
                             type: 'string',
-                            description: 'The grocery item name in singular form, in the EXACT same language the user spoke it (e.g., if user says "молоко" keep it as "молоко", if user says "milk" keep it as "milk")'
+                            description: 'The grocery item name in singular form. PRIORITY: If the spoken item resembles something in USER\'S USUAL GROCERIES list, use that exact name from the list. Otherwise, use the exact language the user spoke (e.g., if user says "молоко" keep it as "молоко", if user says "milk" keep it as "milk")'
                           },
                           quantity: {
                             type: 'number',
@@ -155,7 +201,16 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
                   return;
                 }
                 
-                const groceryData = JSON.parse(argsString);
+                // Additional validation: try to parse and check if it's valid
+                let groceryData;
+                try {
+                  groceryData = JSON.parse(argsString);
+                } catch (parseError) {
+                  console.warn('[WebRTC] Invalid JSON in accumulated args, skipping parse:', argsString);
+                  console.warn('[WebRTC] Parse error:', parseError);
+                  setFunctionCallArgs('');
+                  return;
+                }
                 console.log('[WebRTC] Extracted groceries:', groceryData);
                 // Call the onGroceryExtraction callback if provided
                 if (options.onGroceryExtraction && groceryData.items && Array.isArray(groceryData.items)) {
@@ -164,7 +219,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
                 // Reset the function call args accumulator
                 setFunctionCallArgs('');
               } catch (error) {
-                console.error('[WebRTC] Error parsing grocery data:', error);
+                console.error('[WebRTC] Unexpected error in grocery extraction:', error);
                 console.error('[WebRTC] Raw arguments:', functionCallArgs);
                 // Reset the function call args accumulator even on error
                 setFunctionCallArgs('');
@@ -175,6 +230,12 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             console.log('[WebRTC] Function call started:', msg.item.name);
             if (msg.item.name === 'extract_groceries') {
               setFunctionCallArgs('');
+              // Play voice effect when grocery extraction starts
+              playVoiceEffect();
+              // Call the callback if provided
+              if (options.onFunctionCallStart) {
+                options.onFunctionCallStart();
+              }
             }
           } else if (msg.type === 'response.output_item.done' && msg.item?.type === 'function_call') {
             // Handle completed function call with final arguments
@@ -188,14 +249,22 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
                   return;
                 }
                 
-                const groceryData = JSON.parse(argsString);
+                // Additional validation: try to parse and check if it's valid
+                let groceryData;
+                try {
+                  groceryData = JSON.parse(argsString);
+                } catch (parseError) {
+                  console.warn('[WebRTC] Invalid JSON in arguments, skipping parse:', argsString);
+                  console.warn('[WebRTC] Parse error:', parseError);
+                  return;
+                }
                 console.log('[WebRTC] Extracted groceries from item.done:', groceryData);
                 // Call the onGroceryExtraction callback if provided
                 if (options.onGroceryExtraction && groceryData.items && Array.isArray(groceryData.items)) {
                   options.onGroceryExtraction(groceryData.items);
                 }
               } catch (error) {
-                console.error('[WebRTC] Error parsing grocery data from item.done:', error);
+                console.error('[WebRTC] Unexpected error in grocery extraction from item.done:', error);
                 console.error('[WebRTC] Raw arguments:', msg.item.arguments);
               }
             }

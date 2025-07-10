@@ -3,7 +3,7 @@ import { extractGroceries } from '../../lib/services/grocery-service';
 
 export async function POST(request: NextRequest) {
   try {
-    const { transcript } = await request.json();
+    const { transcript, usualGroceries } = await request.json();
 
     if (!transcript || typeof transcript !== 'string') {
       return NextResponse.json(
@@ -13,8 +13,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[API] Extracting groceries from transcript:', transcript);
+    console.log('[API] Using usual groceries:', usualGroceries ? 'Yes' : 'No');
 
-    const groceries = await extractGroceries(transcript);
+    const groceries = await extractGroceries(transcript, usualGroceries);
     
     console.log('[API] Extracted groceries:', groceries);
 

@@ -1,9 +1,16 @@
 import { GroceryItemWithMeasurement } from '../../types/grocery';
 import { GROCERY_EXTRACTION_PROMPT } from '../prompts/grocery-prompts';
 
-export async function extractGroceries(transcript: string): Promise<GroceryItemWithMeasurement[]> {
+export async function extractGroceries(transcript: string, usualGroceries?: string): Promise<GroceryItemWithMeasurement[]> {
   try {
     console.log('[GroceryService] Extracting groceries from transcript:', transcript);
+    console.log('[GroceryService] Using usual groceries:', usualGroceries ? 'Yes' : 'No');
+
+    // Replace the placeholder in the prompt with actual usual groceries
+    const enhancedPrompt = GROCERY_EXTRACTION_PROMPT.replace(
+      '{USUAL_GROCERIES}',
+      usualGroceries || 'No usual groceries provided'
+    );
 
     const response = await fetch('/api/openai/chat', {
       method: 'POST',
@@ -14,7 +21,7 @@ export async function extractGroceries(transcript: string): Promise<GroceryItemW
         messages: [
           {
             role: 'system',
-            content: GROCERY_EXTRACTION_PROMPT
+            content: enhancedPrompt
           },
           {
             role: 'user',

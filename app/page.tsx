@@ -4,12 +4,18 @@ import VoiceConnection, { VoiceConnectionRef } from './components/VoiceConnectio
 import ErrorDisplay from './components/ErrorDisplay';
 import ConnectionStatus from './components/ConnectionStatus';
 import GroceryList from './components/GroceryList';
+import UsualGroceries from './components/UsualGroceries';
+import ExportDialog from './components/ExportDialog';
 import { useWebRTC } from './hooks/useWebRTC';
 import { GroceryItemWithMeasurement } from './types/grocery';
+import { formatGroceryListForExport } from './lib/utils/grocery-utils';
 
 export default function Home() {
   const [transcriptBuffer, setTranscriptBuffer] = useState('');
   const [groceryItems, setGroceryItems] = useState<GroceryItemWithMeasurement[]>([]);
+  const [usualGroceries, setUsualGroceries] = useState('');
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportText, setExportText] = useState('');
   const voiceConnectionRef = useRef<VoiceConnectionRef>(null);
   
   const {
@@ -19,6 +25,7 @@ export default function Home() {
     startConnection,
     stopConnection,
   } = useWebRTC({
+    usualGroceries,
     onMessage: (msg) => {
       console.log('[Home] WebRTC message:', msg);
     },
@@ -67,11 +74,36 @@ export default function Home() {
     onTranscriptUpdate: (transcript) => {
       console.log('[Home] Transcript update:', transcript);
       setTranscriptBuffer(transcript);
+    },
+    onFunctionCallStart: () => {
+      console.log('[Home] Function call started - playing voice effect');
+      // You can add visual feedback here if needed
+      // For example, flash the grocery list or show a processing indicator
     }
   });
 
   const clearGroceryList = () => {
     setGroceryItems([]);
+  };
+
+  const handleUsualGroceriesChange = (groceries: string) => {
+    setUsualGroceries(groceries);
+  };
+
+  const handleExportList = async () => {
+    if (groceryItems.length === 0) return;
+    
+    const formatted = formatGroceryListForExport(groceryItems);
+    
+    try {
+      await navigator.clipboard.writeText(formatted);
+      console.log('Successfully copied grocery list to clipboard');
+      // You could add a toast notification here
+    } catch {
+      // Fallback: show export dialog
+      setExportText(formatted);
+      setIsExportDialogOpen(true);
+    }
   };
 
   return (
@@ -185,7 +217,7 @@ export default function Home() {
                 )}
               </div>
               
-              <GroceryList items={groceryItems} />
+              <GroceryList items={groceryItems} onExport={handleExportList} />
               
               {groceryItems.length === 0 && (
                 <div className="text-center py-12">
@@ -227,7 +259,19 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Usual Groceries Section */}
+        <div className="mt-12 animate-slide-up" style={{ animationDelay: '0.6s' }}>
+          <UsualGroceries onUsualGroceriesChange={handleUsualGroceriesChange} />
+        </div>
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={isExportDialogOpen}
+        onClose={() => setIsExportDialogOpen(false)}
+        textToCopy={exportText}
+      />
     </div>
   );
 }

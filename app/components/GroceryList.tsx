@@ -7,9 +7,10 @@ interface GroceryListProps {
   items: GroceryItemWithMeasurement[];
   isLoading?: boolean;
   error?: string | null;
+  onExport?: () => void;
 }
 
-const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) => {
+const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error, onExport }) => {
 
 
   if (error) {
@@ -49,8 +50,29 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) =>
   }
 
   return (
-    <div className="space-y-3 max-h-96 overflow-y-auto">
-      {items.map((item, index) => (
+    <div className="flex flex-col h-full">
+      {/* Export button - only show if there are items and onExport is provided */}
+      {items.length > 0 && onExport && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => {
+              console.log('[DEBUG] Export button clicked');
+              onExport();
+            }}
+            className="glass px-4 py-2 rounded-lg text-white/80 hover:text-white transition-all duration-200 hover:scale-105 flex items-center gap-2 text-sm font-medium"
+            aria-label="Export grocery list"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+            </svg>
+            Export List
+          </button>
+        </div>
+      )}
+      
+      <div className="space-y-3 max-h-96 overflow-y-auto flex-1">
+        {items.map((item, index) => (
         <div
           key={`${item.item}-${index}`}
           className="glass-subtle p-4 rounded-lg hover:glass transition-all duration-200 animate-slide-up"
@@ -76,19 +98,20 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) =>
             )}
           </div>
         </div>
-      ))}
-      
-      {/* Scroll indicator */}
-      {items.length > 5 && (
-        <div className="text-center py-2">
-          <div className="inline-flex items-center text-white/40 text-xs">
-            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-            Scroll for more items
+        ))}
+        
+        {/* Scroll indicator */}
+        {items.length > 5 && (
+          <div className="text-center py-2">
+            <div className="inline-flex items-center text-white/40 text-xs">
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Scroll for more items
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
