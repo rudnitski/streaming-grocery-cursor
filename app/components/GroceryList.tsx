@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GroceryItemWithMeasurement } from '../types/grocery';
 
 interface GroceryListProps {
@@ -10,8 +10,65 @@ interface GroceryListProps {
   onExport?: () => void;
 }
 
-const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error, onExport }) => {
+const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const previousItemCount = useRef(items.length);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showNewItemIndicator, setShowNewItemIndicator] = useState(false);
+  const [newlyAddedIndices, setNewlyAddedIndices] = useState<Set<number>>(new Set());
 
+  // Auto-scroll to the bottom when new items are added
+  useEffect(() => {
+    const currentItemCount = items.length;
+    const itemsAdded = currentItemCount > previousItemCount.current;
+    
+    if (itemsAdded && scrollContainerRef.current) {
+      // Show new item indicator
+      setShowNewItemIndicator(true);
+      
+      // Mark newly added items for highlighting
+      const newIndices = new Set<number>();
+      for (let i = previousItemCount.current; i < currentItemCount; i++) {
+        newIndices.add(i);
+      }
+      setNewlyAddedIndices(newIndices);
+      
+      // Clear any existing scroll timeout to handle multiple rapid additions
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      // Scroll after a short delay to ensure DOM is updated and animations start
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (scrollContainerRef.current) {
+          const container = scrollContainerRef.current;
+          
+          // Always scroll to show new items - users expect to see what was just added
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+        
+        // Hide indicator and highlighting after scroll
+        setTimeout(() => {
+          setShowNewItemIndicator(false);
+          setNewlyAddedIndices(new Set());
+        }, 1500);
+      }, 200); // Longer delay to ensure DOM is fully updated
+    }
+    
+    previousItemCount.current = currentItemCount;
+  }, [items.length]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (error) {
     return (
@@ -50,47 +107,48 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error, onEx
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Export button - only show if there are items and onExport is provided */}
-      {items.length > 0 && onExport && (
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={() => {
-              console.log('[DEBUG] Export button clicked');
-              onExport();
-            }}
-            className="glass px-4 py-2 rounded-lg text-white/80 hover:text-white transition-all duration-200 hover:scale-105 flex items-center gap-2 text-sm font-medium"
-            aria-label="Export grocery list"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+    <div className="relative">
+      {/* New item indicator */}
+      {showNewItemIndicator && (
+        <div className="absolute top-2 right-2 z-20 animate-scale-in">
+          <div className="glass-subtle px-2 py-1 rounded-full text-xs text-green-300 font-medium flex items-center shadow-lg">
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            Export List
-          </button>
+            Added!
+          </div>
         </div>
       )}
       
-      <div className="space-y-3 max-h-96 overflow-y-auto flex-1">
-        {items.map((item, index) => (
-        <div
-          key={`${item.item}-${index}`}
-          className="glass-subtle p-4 rounded-lg hover:glass transition-all duration-200 animate-slide-up"
-          style={{ animationDelay: `${index * 0.1}s` }}
-        >
-          <div className="flex flex-col space-y-2">
-            <h4 className="text-white font-medium text-lg capitalize">
-              {item.item}
-            </h4>
+      <div 
+        ref={scrollContainerRef}
+        className="space-y-3 max-h-48 sm:max-h-64 overflow-y-auto"
+      >
+        {items.map((item, index) => {
+          const isNewlyAdded = newlyAddedIndices.has(index);
+          return (
+            <div
+              key={`${item.item}-${index}`}
+              className={`glass-subtle p-3 sm:p-4 rounded-lg hover:glass transition-all duration-200 animate-slide-up ${
+                isNewlyAdded ? 'ring-2 ring-green-400/50 bg-green-500/10' : ''
+              }`}
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <h4 className="text-white font-medium text-base sm:text-lg capitalize truncate">
+                {item.item}
+              </h4>
+            </div>
             
             {(item.quantity || item.measurement) && (
-              <div className="flex items-center space-x-2">
+              <div className="flex-shrink-0">
                 {item.measurement ? (
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-base font-bold bg-blue-500/30 text-blue-100 border border-blue-400/40">
+                  <span className="inline-flex items-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold bg-green-500/30 text-green-100 border border-green-400/40">
                     {item.measurement.value} {item.measurement.unit}
                   </span>
                 ) : item.quantity && (
-                  <span className="inline-flex items-center px-4 py-2 rounded-full text-base font-bold bg-purple-500/30 text-purple-100 border border-purple-400/40">
+                  <span className="inline-flex items-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold bg-blue-500/30 text-blue-100 border border-blue-400/40">
                     {item.quantity} шт
                   </span>
                 )}
@@ -98,16 +156,17 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error, onEx
             )}
           </div>
         </div>
-        ))}
-        
+          );
+        })}
+      
         {/* Scroll indicator */}
-        {items.length > 5 && (
+        {items.length > 4 && (
           <div className="text-center py-2">
             <div className="inline-flex items-center text-white/40 text-xs">
-              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-              Scroll for more items
+              Scroll for more
             </div>
           </div>
         )}

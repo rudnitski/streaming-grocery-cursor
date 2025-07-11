@@ -87,6 +87,7 @@ const DEFAULT_GROCERY_LIST = `сок персиковый-виноградный
 
 export default function UsualGroceries({ onUsualGroceriesChange }: UsualGroceriesProps) {
   const [usualGroceries, setUsualGroceries] = useState(DEFAULT_GROCERY_LIST)
+  const [isEditing, setIsEditing] = useState(false)
   
   // Initialize with default list and notify parent when component mounts
   useEffect(() => {
@@ -124,33 +125,76 @@ export default function UsualGroceries({ onUsualGroceriesChange }: UsualGrocerie
       onUsualGroceriesChange(newValue)
     }
   }
+
+  // Parse groceries into array for display
+  const groceryItems = usualGroceries.split('\n').filter(item => item.trim().length > 0)
   
   return (
     <div className="w-full">
-      <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-        <svg className="w-5 h-5 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h12a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6z" clipRule="evenodd" />
-        </svg>
-        Your Usual Groceries
-      </h3>
-      <div className="glass-strong p-6 mb-8">
-        <p className="text-sm text-white/70 mb-4">
-          Add items you frequently buy (one per line). This helps the assistant recognize your voice input more
-          accurately.
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-white/70">
+          Browse your frequent items below. Say them out loud to add to your cart.
         </p>
         
-        <textarea
-          value={usualGroceries}
-          onChange={handleChange}
-          placeholder="milk
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          className="glass px-3 py-1 rounded-lg text-white/80 hover:text-white transition-all duration-200 hover:scale-105 flex items-center text-xs font-medium"
+        >
+          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+          </svg>
+          {isEditing ? 'Done' : 'Edit'}
+        </button>
+      </div>
+
+      {isEditing ? (
+        <div className="glass p-4 rounded-lg">
+          <textarea
+            value={usualGroceries}
+            onChange={handleChange}
+            placeholder="milk
 eggs
 bread
 bananas
 coffee"
-          className="w-full h-40 p-4 glass border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 resize-none transition-all duration-200"
-          aria-label="Your usual grocery items, one per line"
-        />
-      </div>
+            className="w-full h-32 p-3 glass border border-white/20 rounded-lg text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 resize-none transition-all duration-200"
+            aria-label="Your usual grocery items, one per line"
+          />
+          <p className="text-xs text-white/50 mt-2">
+            Add one item per line. This helps voice recognition accuracy.
+          </p>
+        </div>
+      ) : (
+        <div className="max-h-48 overflow-y-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {groceryItems.map((item, index) => (
+              <div
+                key={index}
+                className="glass-subtle px-3 py-2 rounded-lg text-sm text-white/90 hover:text-white hover:glass transition-all duration-200 cursor-default"
+              >
+                <div className="flex items-center">
+                  <span className="text-blue-400 mr-2">•</span>
+                  <span className="truncate" title={item.trim()}>
+                    {item.trim()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {groceryItems.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-white/60 text-sm">No items yet</p>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-blue-400 hover:text-blue-300 text-sm underline mt-2"
+              >
+                Add some groceries
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

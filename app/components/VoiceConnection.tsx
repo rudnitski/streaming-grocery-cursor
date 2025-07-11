@@ -144,7 +144,7 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
   };
 
   const getButtonClasses = () => {
-    const baseClasses = "relative px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300 transform";
+    const baseClasses = "relative px-4 py-2 sm:px-6 sm:py-3 rounded-full font-semibold text-sm sm:text-base transition-all duration-300 transform min-h-[44px]";
     
     if (isButtonDisabled()) {
       return `${baseClasses} glass-subtle text-white/60 cursor-not-allowed`;
@@ -162,23 +162,24 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex items-center space-x-2">
       <button
         onClick={state === 'connected' ? handleStop : handleStart}
         disabled={isButtonDisabled()}
         className={`${getButtonClasses()} ${showPulseAnimation() ? 'animate-pulse-glow' : ''}`}
       >
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           {state === 'connected' ? (
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
             </svg>
           ) : (
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
             </svg>
           )}
-          <span>{getButtonText()}</span>
+          <span className="hidden sm:inline">{getButtonText()}</span>
+          <span className="sm:hidden">{state === 'connected' ? 'Stop' : 'Record'}</span>
         </div>
         
         {showPulseAnimation() && (
@@ -187,12 +188,13 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
       </button>
       
       {errorMessage && (
-        <div className="glass-subtle px-4 py-2 rounded-lg animate-scale-in">
-          <p className="text-red-300 text-sm font-medium flex items-center">
-            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+        <div className="glass-subtle px-3 py-1 rounded-lg animate-scale-in ml-2">
+          <p className="text-red-300 text-xs font-medium flex items-center">
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
-            {errorMessage}
+            <span className="hidden sm:inline">{errorMessage}</span>
+            <span className="sm:hidden">Error</span>
           </p>
         </div>
       )}
