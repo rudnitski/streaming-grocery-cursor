@@ -19,7 +19,6 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
-  const [functionCallArgs, setFunctionCallArgs] = useState('');
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -100,9 +99,6 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             voice: 'alloy',
             instructions: `You are a grocery shopping assistant. When users mention groceries they want to buy, automatically extract them using the extract_groceries function. CRITICAL: Always preserve the exact language the user spoke the items in - if they say "молоко" keep it as "молоко", if they say "milk" keep it as "milk". Extract items with their quantities and measurements. Listen for items like "I need 2 liters of milk", "мне нужно 500 грамм муки", "add 5 apples", "remove bread", etc. Always call the function when you detect grocery items being mentioned. Be conversational and helpful.${usualGroceriesContext}`,
             input_audio_format: 'pcm16',
-            input_audio_transcription: {
-              model: 'gpt-4o-mini-transcribe'
-            },
             turn_detection: { type: 'server_vad' },
             tools: [
               {
@@ -187,51 +183,12 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
           } else if (msg.type === 'response.audio_transcript.delta' && msg.delta) {
             setAIResponse((prev) => prev + msg.delta);
           } else if (msg.type === 'response.function_call_arguments.delta' && msg.delta) {
-            // Handle function call arguments streaming
+            // Handle function call arguments streaming (not used in current implementation)
             console.log('[WebRTC] Function call arguments delta:', msg.delta);
-            setFunctionCallArgs((prev) => prev + msg.delta);
-          } else if (msg.type === 'response.function_call_arguments.done' && msg.name) {
-            // Handle completed function call - this is where grocery extraction happens!
-            console.log('[WebRTC] Function call completed:', msg.name, 'Accumulated args:', functionCallArgs);
-            if (msg.name === 'extract_groceries' && functionCallArgs) {
-              try {
-                // Ensure the JSON string is complete before parsing
-                const argsString = functionCallArgs.trim();
-                if (!argsString.startsWith('{') || !argsString.endsWith('}')) {
-                  console.warn('[WebRTC] Incomplete JSON in accumulated args, skipping parse:', argsString);
-                  setFunctionCallArgs('');
-                  return;
-                }
-                
-                // Additional validation: try to parse and check if it's valid
-                let groceryData;
-                try {
-                  groceryData = JSON.parse(argsString);
-                } catch (parseError) {
-                  console.warn('[WebRTC] Invalid JSON in accumulated args, skipping parse:', argsString);
-                  console.warn('[WebRTC] Parse error:', parseError);
-                  setFunctionCallArgs('');
-                  return;
-                }
-                console.log('[WebRTC] Extracted groceries:', groceryData);
-                // Call the onGroceryExtraction callback if provided
-                if (options.onGroceryExtraction && groceryData.items && Array.isArray(groceryData.items)) {
-                  options.onGroceryExtraction(groceryData.items);
-                }
-                // Reset the function call args accumulator
-                setFunctionCallArgs('');
-              } catch (error) {
-                console.error('[WebRTC] Unexpected error in grocery extraction:', error);
-                console.error('[WebRTC] Raw arguments:', functionCallArgs);
-                // Reset the function call args accumulator even on error
-                setFunctionCallArgs('');
-              }
-            }
           } else if (msg.type === 'response.output_item.added' && msg.item?.type === 'function_call') {
             // Handle function call start - reset accumulator
             console.log('[WebRTC] Function call started:', msg.item.name);
             if (msg.item.name === 'extract_groceries') {
-              setFunctionCallArgs('');
               // Play voice effect when grocery extraction starts
               playVoiceEffect();
               // Call the callback if provided
@@ -263,7 +220,15 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
                 console.log('[WebRTC] Extracted groceries from item.done:', groceryData);
                 // Call the onGroceryExtraction callback if provided
                 if (options.onGroceryExtraction && groceryData.items && Array.isArray(groceryData.items)) {
+                  console.log('[WebRTC] Calling onGroceryExtraction with items:', groceryData.items);
                   options.onGroceryExtraction(groceryData.items);
+                } else {
+                  console.warn('[WebRTC] Grocery extraction callback not called - missing callback or invalid items:', {
+                    hasCallback: !!options.onGroceryExtraction,
+                    hasItems: !!groceryData.items,
+                    isArray: Array.isArray(groceryData.items),
+                    itemsData: groceryData.items
+                  });
                 }
               } catch (error) {
                 console.error('[WebRTC] Unexpected error in grocery extraction from item.done:', error);

@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await fetch(
-      'https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+      'https://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview',
       {
         method: 'POST',
         headers: {
