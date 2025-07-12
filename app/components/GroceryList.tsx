@@ -14,7 +14,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) =>
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const previousItemCount = useRef(items.length);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [showNewItemIndicator, setShowNewItemIndicator] = useState(false);
   const [newlyAddedIndices, setNewlyAddedIndices] = useState<Set<number>>(new Set());
 
   // Auto-scroll to the bottom when new items are added
@@ -23,9 +22,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) =>
     const itemsAdded = currentItemCount > previousItemCount.current;
     
     if (itemsAdded && scrollContainerRef.current) {
-      // Show new item indicator
-      setShowNewItemIndicator(true);
-      
       // Mark newly added items for highlighting
       const newIndices = new Set<number>();
       for (let i = previousItemCount.current; i < currentItemCount; i++) {
@@ -50,9 +46,8 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) =>
           });
         }
         
-        // Hide indicator and highlighting after scroll
+        // Hide highlighting after scroll
         setTimeout(() => {
-          setShowNewItemIndicator(false);
           setNewlyAddedIndices(new Set());
         }, 1500);
       }, 200); // Longer delay to ensure DOM is fully updated
@@ -108,18 +103,6 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) =>
 
   return (
     <div className="relative">
-      {/* New item indicator */}
-      {showNewItemIndicator && (
-        <div className="absolute top-2 right-2 z-20 animate-scale-in">
-          <div className="glass-subtle px-2 py-1 rounded-full text-xs text-green-300 font-medium flex items-center shadow-lg">
-            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Added!
-          </div>
-        </div>
-      )}
-      
       <div 
         ref={scrollContainerRef}
         className="space-y-3 max-h-48 sm:max-h-64 overflow-y-auto"

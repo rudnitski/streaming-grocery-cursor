@@ -7,6 +7,7 @@ interface VoiceConnectionProps {
   onStopConnection?: () => void;
   connectionState?: string;
   isProcessing?: boolean;
+  isRetrying?: boolean;
   onError?: (error: string) => void;
   onPermissionGranted?: () => void;
   onPermissionDenied?: (error: string) => void;
@@ -25,6 +26,7 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
   onStopConnection, 
   connectionState = 'disconnected',
   isProcessing = false,
+  isRetrying = false,
   onError,
   onPermissionGranted,
   onPermissionDenied
@@ -127,6 +129,7 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
   }), [handleStop, onError]);
 
   const getButtonText = () => {
+    if (isRetrying) return 'Reconnecting...';
     if (state === 'requesting-permission') return 'Requesting Permission...';
     if (state === 'connecting') return 'Connecting...';
     if (state === 'connected') return 'Stop Recording';
@@ -136,11 +139,11 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
   };
 
   const isButtonDisabled = () => {
-    return state === 'requesting-permission' || state === 'connecting' || state === 'stopping';
+    return isRetrying || state === 'requesting-permission' || state === 'connecting' || state === 'stopping';
   };
 
   const showPulseAnimation = () => {
-    return state === 'connected' || isProcessing;
+    return state === 'connected' || isProcessing || isRetrying;
   };
 
   const getButtonClasses = () => {

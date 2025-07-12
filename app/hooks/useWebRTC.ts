@@ -19,6 +19,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
+  const [isRetrying, setIsRetrying] = useState(false);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -274,13 +275,33 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             // Check if the response failed and show error
             if (msg.response.status === 'failed' && msg.response.status_details?.error) {
               const errorMessage = msg.response.status_details.error.message;
-              let userFriendlyError = errorMessage;
+              const userFriendlyError = errorMessage;
               
-              // Handle rate limit errors specifically
+              // Handle rate limit errors specifically with auto-retry
               if (errorMessage.includes('Rate limit reached')) {
                 const match = errorMessage.match(/Please try again in ([\d.]+)s/);
-                const waitTime = match ? match[1] : '2';
-                userFriendlyError = `Rate limit reached. Please wait ${waitTime} seconds before trying again.`;
+                const waitTimeSeconds = match ? parseFloat(match[1]) : 2;
+                const waitTimeMs = Math.ceil(waitTimeSeconds * 1000);
+                
+                console.log(`[WebRTC] Rate limit hit, auto-retrying in ${waitTimeMs}ms`);
+                setIsRetrying(true);
+                setError(`Rate limited, reconnecting in ${waitTimeSeconds}s...`);
+                
+                // Auto-retry after the specified wait time
+                setTimeout(async () => {
+                  console.log('[WebRTC] Auto-retry: Stopping current connection');
+                  stopConnection();
+                  
+                  // Small additional delay to ensure cleanup
+                  setTimeout(async () => {
+                    console.log('[WebRTC] Auto-retry: Starting new connection');
+                    setIsRetrying(false);
+                    setError(null);
+                    await startConnection();
+                  }, 100);
+                }, waitTimeMs);
+                
+                return;
               }
               
               console.error('[WebRTC] API Error:', errorMessage);
@@ -447,6 +468,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     aiResponse,
     isProcessing,
     isConnected,
+    isRetrying,
     startConnection,
     stopConnection,
     sendMessage,
