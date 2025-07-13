@@ -18,11 +18,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   const [aiResponse, setAIResponse] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [currentTranscript, setCurrentTranscript] = useState('');
   const [isRetrying, setIsRetrying] = useState(false);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const currentTranscriptRef = useRef<string>('');
   
   // Audio context for voice effects
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -66,6 +66,9 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   // Call this to start the connection
   const startConnection = async () => {
     try {
+      // Reset transcript state on new connection
+      currentTranscriptRef.current = '';
+      
       console.log('[WebRTC] Creating RTCPeerConnection');
       const pc = new RTCPeerConnection();
       peerRef.current = pc;
@@ -245,8 +248,8 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
           } else if (msg.type === 'conversation.item.input_audio_transcription.delta' && msg.delta) {
             // Handle partial transcription updates
             console.log('[WebRTC] Input audio transcription delta:', msg.delta);
-            setCurrentTranscript((prev) => prev + msg.delta);
-            options.onTranscriptUpdate?.(currentTranscript + msg.delta);
+            currentTranscriptRef.current += msg.delta;
+            options.onTranscriptUpdate?.(currentTranscriptRef.current);
           } else if (msg.type === 'session.error' && msg.error) {
             setError(msg.error.message || 'Session error');
           } else if (msg.type === 'response.created' && msg.response) {
@@ -394,13 +397,23 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       setError(message);
       options.onError?.(message);
       
-      // Clean up media stream on error
+      // Clean up media stream and audio context on error
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => {
           console.log('[WebRTC] Error cleanup: Stopping media track:', track.kind);
           track.stop();
         });
         mediaStreamRef.current = null;
+      }
+      
+      // Clean up peer connection and data channel
+      if (peerRef.current) {
+        peerRef.current.close();
+        peerRef.current = null;
+      }
+      if (dataChannelRef.current) {
+        dataChannelRef.current.close();
+        dataChannelRef.current = null;
       }
     }
   };
@@ -413,6 +426,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     setAIResponse('');
     setIsProcessing(false);
     setIsConnected(false);
+    currentTranscriptRef.current = ''; // Reset transcript when stopping
     
     // Stop media stream tracks to release microphone
     if (mediaStreamRef.current) {
@@ -456,6 +470,12 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
           console.log('[WebRTC] Cleanup: Stopping media track:', track.kind);
           track.stop();
         });
+        mediaStreamRef.current = null;
+      }
+      // Close audio context to prevent memory leak
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
       }
       peerRef.current?.close();
       dataChannelRef.current?.close();

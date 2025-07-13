@@ -6,17 +6,22 @@ import GroceryList from './components/GroceryList';
 import UsualGroceries from './components/UsualGroceries';
 import ExportDialog from './components/ExportDialog';
 import { useWebRTC } from './hooks/useWebRTC';
-import { GroceryItemWithMeasurement } from './types/grocery';
+import { useGroceryList } from './hooks/useGroceryList';
 import { formatGroceryListForExport } from './lib/utils/grocery-utils';
 
 export default function Home() {
-  const [groceryItems, setGroceryItems] = useState<GroceryItemWithMeasurement[]>([]);
   const [usualGroceries, setUsualGroceries] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportText, setExportText] = useState('');
   const [isExporting, setIsExporting] = useState(false);
-  const [isClearing, setIsClearing] = useState(false);
   const voiceConnectionRef = useRef<VoiceConnectionRef>(null);
+  
+  const { 
+    groceryItems, 
+    isClearing, 
+    addOrUpdateItems, 
+    clearList 
+  } = useGroceryList();
   
   const {
     connectionState,
@@ -35,42 +40,7 @@ export default function Home() {
     },
     onGroceryExtraction: (items: unknown) => {
       console.log('[Home] Groceries extracted via function call:', items);
-      
-      setGroceryItems(prevItems => {
-        const updatedItems = [...prevItems];
-        
-        if (Array.isArray(items)) {
-          items.forEach((item: unknown) => {
-            if (item && typeof item === 'object' && 'item' in item) {
-              const typedItem = item as GroceryItemWithMeasurement;
-              const existingIndex = updatedItems.findIndex(
-                existing => existing.item.toLowerCase() === typedItem.item.toLowerCase()
-              );
-              
-              if (typedItem.action === 'remove') {
-                // Remove item if it exists
-                if (existingIndex !== -1) {
-                  updatedItems.splice(existingIndex, 1);
-                }
-              } else if (typedItem.action === 'modify' && existingIndex !== -1) {
-                // Update existing item
-                updatedItems[existingIndex] = typedItem;
-              } else if (typedItem.action === 'add' || !typedItem.action) {
-                // Add new item or update quantity if it exists
-                if (existingIndex !== -1) {
-                  // Update existing item with new quantity
-                  updatedItems[existingIndex] = typedItem;
-                } else {
-                  // Add new item
-                  updatedItems.push(typedItem);
-                }
-              }
-            }
-          });
-        }
-        
-        return updatedItems;
-      });
+      addOrUpdateItems(items);
     },
     onTranscriptUpdate: (transcript) => {
       console.log('[Home] Transcript update:', transcript);
@@ -84,13 +54,7 @@ export default function Home() {
   });
 
   const clearGroceryList = () => {
-    setIsClearing(true);
-    
-    // Brief delay for visual feedback
-    setTimeout(() => {
-      setGroceryItems([]);
-      setIsClearing(false);
-    }, 200);
+    clearList();
   };
 
   const handleUsualGroceriesChange = (groceries: string) => {

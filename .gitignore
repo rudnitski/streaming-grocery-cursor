@@ -18,5 +18,8 @@
 /out/
 
 # Local environment variables
-.env.local 
+.env*
 node_modules
+
+# TypeScript incremental compilation cache
+*.tsbuildinfo

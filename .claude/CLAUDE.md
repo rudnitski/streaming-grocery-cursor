@@ -79,3 +79,24 @@
   - Every line should have a purpose - No dead code or unused declarations
   - Follow the principle of least privilege - Use the most specific types possible
   - Prefer explicit over implicit - Make intentions clear through proper typing
+
+Tooling Integration
+-------------------
+
+### Gemini CLI
+
+- When you need massive‑context code reviews (e.g., whole‑repo audits or very large diffs), run the command in non‑interactive mode:
+
+  ```
+  gemini -p "<prompt text>"
+  ```
+
+  This calls Google Gemini CLI and returns plain‑text output that Claude can keep reasoning over.
+
+- Use the Bash tool to execute the Gemini CLI directly. Example:
+
+  ```bash
+  gemini -p "Analyze this codebase for security vulnerabilities and code quality issues"
+  ```
+
+- After receiving the Gemini output, Claude should interpret the findings, add its own analysis, and provide actionable recommendations. Consider creating documentation or reports in the repo if the analysis reveals significant issues.
