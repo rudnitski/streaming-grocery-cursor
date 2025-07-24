@@ -188,7 +188,7 @@ export const SimpleDebugPanel: React.FC = () => {
                       </div>
                       <span className="text-gray-500 text-xs ml-2">{log.timestamp}</span>
                     </div>
-                    {log.data && (
+                    {log.data != null && (
                       <details className="mt-1">
                         <summary className="text-blue-500 cursor-pointer text-xs">Show data</summary>
                         <pre className="mt-1 p-1 bg-gray-100 rounded text-xs overflow-auto max-h-20">

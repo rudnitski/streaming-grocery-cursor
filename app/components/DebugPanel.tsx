@@ -43,7 +43,7 @@ const LogEntry: React.FC<{ entry: DebugLogEntry }> = ({ entry }) => {
         </span>
       </div>
       
-      {entry.data && (
+      {entry.data != null && (
         <div className="mt-1">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
