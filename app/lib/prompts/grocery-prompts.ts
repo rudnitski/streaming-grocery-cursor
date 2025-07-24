@@ -50,6 +50,7 @@ Rules:
   - Conversational: "I don't need milk", "we don't need apples anymore", "I think we don't need bananas"
 - Detect quantity modifications such as:
   - "change milk to 2", "make it 3 apples", "I need 5 bananas instead"
+- CRITICAL: For incomplete commands where only quantity/measurement is mentioned without a specific item name (e.g., "4 упаковки", "2 liters", "3 pieces"), DO NOT modify any existing items. These incomplete commands should be ignored and result in an empty response.
 
 Example valid responses (exactly as shown, no code formatting):
 {"items": [{"item": "молоко", "quantity": 1, "action": "add", "measurement": null}, {"item": "яйцо", "quantity": 3, "action": "add", "measurement": {"value": 250, "unit": "g"}}]}
