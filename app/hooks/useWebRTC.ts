@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { addDebugLog } from '../components/SimpleDebugPanel';
 
 interface UseWebRTCOptions {
   onSessionUpdate?: (event: unknown) => void;
@@ -66,6 +67,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
   // Call this to start the connection
   const startConnection = async () => {
     try {
+      addDebugLog('audio', 'Starting WebRTC connection');
       // Reset transcript state on new connection
       currentTranscriptRef.current = '';
       
@@ -77,6 +79,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream; // Store the stream for cleanup
       console.log('[WebRTC] Microphone access granted, adding audio track', stream.getAudioTracks());
+      addDebugLog('audio', 'Audio input stream started', { audioTracks: stream.getAudioTracks().length });
       stream.getAudioTracks().forEach(track => pc.addTrack(track, stream));
 
       console.log('[WebRTC] Creating data channel');
@@ -193,6 +196,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
             // Handle function call start - reset accumulator
             console.log('[WebRTC] Function call started:', msg.item.name);
             if (msg.item.name === 'extract_groceries') {
+              addDebugLog('function', 'Grocery extraction function called', { functionName: msg.item.name });
               // Play voice effect when grocery extraction starts
               playVoiceEffect();
               // Call the callback if provided
@@ -207,8 +211,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
               try {
                 // Ensure the JSON string is complete before parsing
                 const argsString = msg.item.arguments.trim();
+                addDebugLog('json', 'Raw JSON response received', argsString);
+                
                 if (!argsString.startsWith('{') || !argsString.endsWith('}')) {
                   console.warn('[WebRTC] Incomplete JSON arguments, skipping parse:', argsString);
+                  addDebugLog('error', 'Incomplete JSON received', argsString);
                   return;
                 }
                 
@@ -219,15 +226,23 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
                 } catch (parseError) {
                   console.warn('[WebRTC] Invalid JSON in arguments, skipping parse:', argsString);
                   console.warn('[WebRTC] Parse error:', parseError);
+                  addDebugLog('error', 'JSON parsing failed', { json: argsString, error: parseError });
                   return;
                 }
                 console.log('[WebRTC] Extracted groceries from item.done:', groceryData);
                 // Call the onGroceryExtraction callback if provided
                 if (options.onGroceryExtraction && groceryData.items && Array.isArray(groceryData.items)) {
                   console.log('[WebRTC] Calling onGroceryExtraction with items:', groceryData.items);
+                  addDebugLog('items', 'Items sent for addition to list', groceryData.items);
                   options.onGroceryExtraction(groceryData.items);
                 } else {
                   console.warn('[WebRTC] Grocery extraction callback not called - missing callback or invalid items:', {
+                    hasCallback: !!options.onGroceryExtraction,
+                    hasItems: !!groceryData.items,
+                    isArray: Array.isArray(groceryData.items),
+                    itemsData: groceryData.items
+                  });
+                  addDebugLog('error', 'Items not sent - callback or items invalid', {
                     hasCallback: !!options.onGroceryExtraction,
                     hasItems: !!groceryData.items,
                     isArray: Array.isArray(groceryData.items),
@@ -237,6 +252,7 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
               } catch (error) {
                 console.error('[WebRTC] Unexpected error in grocery extraction from item.done:', error);
                 console.error('[WebRTC] Raw arguments:', msg.item.arguments);
+                addDebugLog('error', 'Unexpected error in grocery extraction', { error, rawArgs: msg.item.arguments });
               }
             }
           } else if (msg.type === 'conversation.item.input_audio_transcription.completed' && msg.transcript) {

@@ -5,11 +5,13 @@ import ErrorDisplay from './components/ErrorDisplay';
 import GroceryList from './components/GroceryList';
 import UsualGroceries from './components/UsualGroceries';
 import ExportDialog from './components/ExportDialog';
+import { SimpleDebugPanel } from './components/SimpleDebugPanel';
 import { useWebRTC } from './hooks/useWebRTC';
 import { useGroceryList } from './hooks/useGroceryList';
 import { formatGroceryListForExport } from './lib/utils/grocery-utils';
 
-export default function Home() {
+// Inner component that uses the WebRTC hook inside the provider
+function HomeContent() {
   const [usualGroceries, setUsualGroceries] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportText, setExportText] = useState('');
@@ -228,6 +230,9 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Debug Panel */}
+      <SimpleDebugPanel />
+      
       {/* Export Dialog */}
       <ExportDialog
         isOpen={isExportDialogOpen}
@@ -236,4 +241,8 @@ export default function Home() {
       />
     </div>
   );
+}
+
+export default function Home() {
+  return <HomeContent />;
 }
