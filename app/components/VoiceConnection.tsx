@@ -64,6 +64,14 @@ const VoiceConnection = forwardRef<VoiceConnectionRef, VoiceConnectionProps>(({
   const requestMicrophonePermission = async (): Promise<boolean> => {
     try {
       setState('requesting-permission');
+      
+      // Check if mediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('getUserMedia is not supported by this browser');
+        setState('error');
+        return false;
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       // Stop the stream immediately as we just needed permission

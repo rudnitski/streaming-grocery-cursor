@@ -104,14 +104,14 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
           type: 'session.update',
           session: {
             voice: 'alloy',
-            instructions: `You are a grocery shopping assistant. When users mention groceries they want to buy, automatically extract them using the extract_groceries function. CRITICAL: Always preserve the exact language the user spoke the items in - if they say "молоко" keep it as "молоко", if they say "milk" keep it as "milk". Extract items with their quantities and measurements. Listen for items like "I need 2 liters of milk", "мне нужно 500 грамм муки", "add 5 apples", "remove bread", etc. Always call the function when you detect grocery items being mentioned. Be conversational and helpful.${usualGroceriesContext}`,
+            instructions: `You are a grocery shopping assistant. When users give grocery COMMANDS or STATEMENTS, automatically extract them using the extract_groceries function. CRITICAL: Only extract items from clear commands, NOT from questions or discussions. Do NOT extract when users ask questions like "do we need milk?" or "should I get bread?" - only extract from statements like "I need milk" or "add bread". Always preserve the exact language the user spoke the items in - if they say "молоко" keep it as "молоко", if they say "milk" keep it as "milk". Extract items with their quantities and measurements. Listen for commands like "I need 2 liters of milk", "мне нужно 500 грамм муки", "add 5 apples", "remove bread", etc. Ignore questions and discussions about groceries. Be conversational and helpful.${usualGroceriesContext}`,
             input_audio_format: 'pcm16',
             turn_detection: { type: 'server_vad' },
             tools: [
               {
                 type: 'function',
                 name: 'extract_groceries',
-                description: 'Extract grocery items and quantities from user speech in real-time. Call this function as soon as ANY grocery items are identified, don\'t wait for complete sentences. CRITICAL: If an item resembles something in the USER\'S USUAL GROCERIES list, prefer using that exact name from the list.',
+                description: 'Extract grocery items and quantities from user speech in real-time. Call this function ONLY when grocery items are mentioned in COMMANDS or STATEMENTS, NOT in questions or discussions. Do NOT call this function for questions like "do we need milk?", "should I get bread?", or choice questions like "milk or juice?". Only call for clear commands like "I need milk", "add bread", "get some apples". CRITICAL: If an item resembles something in the USER\'S USUAL GROCERIES list, prefer using that exact name from the list.',
                 parameters: {
                   type: 'object',
                   properties: {
