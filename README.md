@@ -1,13 +1,13 @@
-# GPT-4o Voice Connection Demo
+# GPT Realtime Voice Connection Demo
 
-A Next.js application demonstrating real-time voice interaction with OpenAI's GPT-4o realtime model using WebRTC for low-latency audio streaming.
+A Next.js application demonstrating real-time voice interaction with OpenAI's Realtime API using WebRTC for low-latency audio streaming.
 
 ## Features
 
 - **One-Click Voice Interaction**: Single button interface that handles microphone permission, connection, and recording
 - **Smart Permission Management**: Requests microphone access only once, remembers permission for future use
-- **Real-time Voice Input**: Capture audio from your microphone and stream it directly to GPT-4o
-- **Live AI Responses**: See GPT-4o's responses appear in real-time as they're generated
+- **Real-time Voice Input**: Capture audio from your microphone and stream it directly to OpenAI Realtime
+- **Live AI Responses**: See responses appear in real-time as they're generated
 - **WebRTC Integration**: Low-latency audio streaming using WebRTC technology
 - **Visual State Feedback**: Dynamic button states with color coding and animations
 - **Auto-Recording**: Automatically starts listening when connection is established
@@ -18,7 +18,7 @@ A Next.js application demonstrating real-time voice interaction with OpenAI's GP
 
 - Node.js 18+ 
 - npm, yarn, pnpm, or bun
-- OpenAI API key with access to GPT-4o realtime model
+- OpenAI API key with access to the Realtime API
 - Modern browser with microphone access
 
 ## Getting Started
@@ -37,9 +37,11 @@ Create a `.env.local` file in the root directory:
 
 ```bash
 OPENAI_API_KEY=your_openai_api_key_here
+# Optional: select the Realtime model (defaults to gpt-realtime)
+OPENAI_REALTIME_MODEL=gpt-realtime
 ```
 
-**Important**: Make sure your OpenAI API key has access to the GPT-4o realtime model (`gpt-4o-realtime-preview-2024-12-17`).
+**Important**: Make sure your OpenAI API key has access to the Realtime API. By default the app uses the `gpt-realtime` model alias; you can override via `OPENAI_REALTIME_MODEL`.
 
 ### 3. Run Development Server
 
@@ -121,7 +123,7 @@ The application uses WebRTC for real-time audio streaming:
 
 1. **Frontend**: Captures audio using browser APIs and establishes WebRTC connection
 2. **Backend Proxy**: Handles WebRTC signaling and securely manages OpenAI API communication
-3. **OpenAI Integration**: Streams audio to GPT-4o realtime model and receives responses
+3. **OpenAI Integration**: Streams audio to OpenAI Realtime API and receives responses
 
 ### Key Components
 
@@ -142,7 +144,7 @@ The application handles various error scenarios:
 
 ## Rate Limiting
 
-The OpenAI GPT-4o realtime model has rate limits. If you encounter rate limiting:
+The OpenAI Realtime API has rate limits. If you encounter rate limiting:
 
 - Wait for the specified time shown in the error message
 - Consider reducing the frequency of requests
@@ -179,8 +181,8 @@ The application can be deployed to any platform that supports:
 ### Common Issues
 
 1. **"Model not found" error**: 
-   - Verify your OpenAI API key has access to GPT-4o realtime model
-   - Check that you're using the correct model name: `gpt-4o-realtime-preview-2024-12-17`
+   - Verify your OpenAI API key has access to the Realtime API
+   - Check that you're using the intended model name (default `gpt-realtime`) or set `OPENAI_REALTIME_MODEL` accordingly
 
 2. **Microphone not working**:
    - Ensure browser has microphone permissions

@@ -21,8 +21,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing OpenAI API key' }, { status: 500 });
     }
 
+    // Allow selecting the Realtime model via env, default to the newer gpt-realtime alias
+    const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime';
     const response = await fetch(
-      'https://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview',
+      `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
       {
         method: 'POST',
         headers: {
