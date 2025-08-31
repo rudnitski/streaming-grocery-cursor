@@ -2,7 +2,6 @@
 import React, { useState, useRef } from 'react';
 import VoiceConnection, { VoiceConnectionRef } from './components/VoiceConnection';
 import ErrorDisplay from './components/ErrorDisplay';
-import GroceryList from './components/GroceryList';
 import UsualGroceries from './components/UsualGroceries';
 import ExportDialog from './components/ExportDialog';
 import ShoppingCartModal from './components/ShoppingCartModal';
