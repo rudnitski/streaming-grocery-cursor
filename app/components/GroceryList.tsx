@@ -8,9 +8,11 @@ interface GroceryListProps {
   isLoading?: boolean;
   error?: string | null;
   onExport?: () => void;
+  /** Optional className override for the internal scroll container */
+  scrollContainerClassName?: string;
 }
 
-const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) => {
+const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error, scrollContainerClassName }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const previousItemCount = useRef(items.length);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -105,7 +107,7 @@ const GroceryList: React.FC<GroceryListProps> = ({ items, isLoading, error }) =>
     <div className="relative">
       <div 
         ref={scrollContainerRef}
-        className="space-y-3 max-h-48 sm:max-h-64 overflow-y-auto"
+        className={scrollContainerClassName || "space-y-3 max-h-48 sm:max-h-64 overflow-y-auto"}
       >
         {items.map((item, index) => {
           const isNewlyAdded = newlyAddedIndices.has(index);

@@ -1,6 +1,6 @@
-# GPT Realtime Voice Connection Demo
+# Grocery Voice Assistant
 
-A Next.js application demonstrating real-time voice interaction with OpenAI's Realtime API using WebRTC for low-latency audio streaming.
+A Next.js application for building a grocery shopping list via real‑time voice interaction using OpenAI’s Realtime API over WebRTC. The UI is optimized for a fast “add by voice” flow with a scrollable Usual Groceries reference and a focused cart modal.
 
 ## Features
 
@@ -13,6 +13,8 @@ A Next.js application demonstrating real-time voice interaction with OpenAI's Re
 - **Auto-Recording**: Automatically starts listening when connection is established
 - **Error Handling**: Comprehensive error handling for microphone access, API failures, and connection issues
 - **Secure API Management**: OpenAI API keys are kept secure on the backend
+\n- **Usual Groceries (inline)**: Scrollable list of frequent items right on the main page
+- **Shopping Cart (modal)**: Click the cart section to open a full, scrollable modal with Export and Clear actions
 
 ## Prerequisites
 
@@ -57,6 +59,8 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
+Note: The project no longer fetches Google Fonts at build/runtime to avoid failures in restricted/offline environments.
+
 ### 4. Using the Voice Feature
 
 1. **First Time Use**:
@@ -92,28 +96,58 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 │   ├── api/
 │   │   └── webrtc/
 │   │       └── offer/
-│   │           └── route.ts          # WebRTC signaling API route
+│   │           └── route.ts              # WebRTC signaling API route
 │   ├── components/
-│   │   ├── ConnectionStatus.tsx      # Connection status indicator
-│   │   ├── ErrorDisplay.tsx         # Error message display
-│   │   ├── VoiceConnection.tsx       # Unified voice recording controls
-│   │   └── VoiceRecorder.tsx         # Legacy voice recording component
+│   │   ├── ConnectionStatus.tsx          # Connection status indicator
+│   │   ├── ErrorDisplay.tsx              # Error message display
+│   │   ├── ExportDialog.tsx              # Clipboard fallback modal
+│   │   ├── GroceryList.tsx               # Cart list with auto-scroll
+│   │   ├── ShoppingCartModal.tsx         # New cart modal (PRD)
+│   │   ├── UsualGroceries.tsx            # Inline, scrollable frequent items (PRD)
+│   │   ├── VoiceConnection.tsx           # Unified voice controls
+│   │   └── VoiceRecorder.tsx             # Legacy recorder
 │   ├── hooks/
-│   │   ├── useAudioRecorder.ts       # Audio recording hook
-│   │   └── useWebRTC.ts              # WebRTC connection hook
-│   ├── types/
-│   │   ├── audio.ts                  # Audio-related TypeScript types
-│   │   └── webrtc.ts                 # WebRTC TypeScript types
-│   ├── utils/
-│   │   ├── audioUtils.ts             # Audio processing utilities
-│   │   └── webrtcUtils.ts            # WebRTC utilities
-│   └── page.tsx                      # Main application page
-├── src/src/app/api/webrtc/
-│   └── offer.ts                      # Alternative API route location
-└── tasks/                            # Project documentation
+│   │   ├── useAudioRecorder.ts           # Audio recording hook
+│   │   ├── useGroceryList.ts             # Grocery list state
+│   │   └── useWebRTC.ts                  # WebRTC connection hook
+│   ├── lib/
+│   │   └── utils/
+│   │       ├── grocery-utils.ts          # Export formatting helpers
+│   │       └── logger.ts                 # Logging helper
+│   ├── layout.tsx                        # App shell + metadata (title/icons)
+│   └── page.tsx                          # Main page wiring voice + UI
+├── public/
+│   ├── favicon.ico                       # Favicon (new)
+│   ├── favicon-16x16.png                 # Favicon 16x16 (new)
+│   ├── favicon-32x32.png                 # Favicon 32x32 (new)
+│   ├── apple-touch-icon.png              # iOS icon (new)
+│   ├── android-chrome-192x192.png        # Android icon (new)
+│   └── android-chrome-512x512.png        # Android icon (new)
+└── tasks/
+    ├── prd-refined-grocery-list-interaction.md  # New PRD for UI changes
     ├── prd-gpt4o-voice-connection.md
     └── tasks-prd-gpt4o-voice-connection.md
 ```
+
+## Recent UX Update (PRD)
+
+Per `tasks/prd-refined-grocery-list-interaction.md`:
+- Usual Groceries now renders inline and is scrollable; the modal has been removed.
+- Shopping Cart opens a dedicated modal when the cart has items; it contains the item count, Export, and Clear actions.
+- `GroceryList` gained `scrollContainerClassName` to adapt scrolling when used inside modals.
+
+Affected files:
+- `app/components/UsualGroceries.tsx`: Removed portal/overlay; added inline scroll.
+- `app/components/GroceryList.tsx`: Added `scrollContainerClassName` prop.
+- `app/components/ShoppingCartModal.tsx`: New modal for the cart.
+- `app/page.tsx`: Makes cart section clickable and wires the modal; keeps empty state inline.
+- `app/layout.tsx`: Sets app title and icon metadata.
+
+## Branding and Icons
+
+- App title: “Grocery Voice Assistant”.
+- Favicons and PWA icons are under `public/` and referenced via Next metadata in `app/layout.tsx`.
+- Safari desktop caches icons aggressively; if you don’t see the new icon, clear site data or open a Private Window. We also append cache‑buster query params to force refresh.
 
 ## Technical Implementation
 

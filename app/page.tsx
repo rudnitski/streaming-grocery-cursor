@@ -5,6 +5,7 @@ import ErrorDisplay from './components/ErrorDisplay';
 import GroceryList from './components/GroceryList';
 import UsualGroceries from './components/UsualGroceries';
 import ExportDialog from './components/ExportDialog';
+import ShoppingCartModal from './components/ShoppingCartModal';
 import { SimpleDebugPanel } from './components/SimpleDebugPanel';
 import { useWebRTC } from './hooks/useWebRTC';
 import { useGroceryList } from './hooks/useGroceryList';
@@ -16,6 +17,7 @@ function HomeContent() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportText, setExportText] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const voiceConnectionRef = useRef<VoiceConnectionRef>(null);
   
   const { 
@@ -85,6 +87,18 @@ function HomeContent() {
     }
   };
 
+  const openCart = () => {
+    if (groceryItems.length > 0) setIsCartOpen(true);
+  };
+
+  const onCartKeyDown = (e: React.KeyboardEvent) => {
+    if (groceryItems.length === 0) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setIsCartOpen(true);
+    }
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -144,9 +158,18 @@ function HomeContent() {
           <UsualGroceries onUsualGroceriesChange={handleUsualGroceriesChange} />
         </div>
 
-        {/* Shopping Cart Section */}
-        <div className="glass-strong p-4 sm:p-6 mb-4 sm:mb-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        {/* Shopping Cart Section: clickable to open modal */}
+        <div
+          className={`glass-strong p-4 sm:p-6 mb-4 sm:mb-6 animate-slide-up ${groceryItems.length > 0 ? 'cursor-pointer hover:glass' : ''}`}
+          style={{ animationDelay: '0.2s' }}
+          onClick={openCart}
+          role={groceryItems.length > 0 ? 'button' : undefined}
+          tabIndex={groceryItems.length > 0 ? 0 : -1}
+          onKeyDown={onCartKeyDown}
+          aria-disabled={groceryItems.length === 0}
+          aria-label="Shopping Cart"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
             <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center">
               <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
@@ -158,54 +181,16 @@ function HomeContent() {
                 </span>
               )}
             </h2>
-            
             {groceryItems.length > 0 && (
-              <div className="flex items-center gap-2 sm:space-x-2">
-                <button
-                  onClick={handleExportList}
-                  disabled={isExporting}
-                  className={`glass px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-white/80 hover:text-white transition-all duration-200 hover:scale-105 flex items-center text-xs sm:text-sm font-medium flex-1 sm:flex-none justify-center ${
-                    isExporting ? 'opacity-75 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isExporting ? (
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                  {isExporting ? 'Copied!' : 'Export'}
-                </button>
-                <button
-                  onClick={clearGroceryList}
-                  disabled={isClearing}
-                  className={`glass px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-white/80 hover:text-white transition-all duration-200 hover:scale-105 flex items-center text-xs sm:text-sm font-medium flex-1 sm:flex-none justify-center ${
-                    isClearing ? 'opacity-75 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isClearing ? (
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clipRule="evenodd" />
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                  {isClearing ? 'Clearing...' : 'Clear'}
-                </button>
+              <div className="flex items-center text-white/60 text-xs sm:text-sm">
+                <span className="mr-1">View cart</span>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
               </div>
             )}
           </div>
-          
-          <GroceryList items={groceryItems} onExport={handleExportList} />
-          
+
           {groceryItems.length === 0 && (
             <div className="text-center py-8">
               <div className="glass w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-float">
@@ -220,6 +205,17 @@ function HomeContent() {
             </div>
           )}
         </div>
+
+        {/* Shopping Cart Modal */}
+        <ShoppingCartModal
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          items={groceryItems}
+          onExport={handleExportList}
+          onClear={clearGroceryList}
+          isExporting={isExporting}
+          isClearing={isClearing}
+        />
 
         {/* Quick Instructions */}
         <div className="glass p-4 animate-slide-up" style={{ animationDelay: '0.3s' }}>
