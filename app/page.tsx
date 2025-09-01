@@ -8,6 +8,8 @@ import ShoppingCartModal from './components/ShoppingCartModal';
 import { SimpleDebugPanel } from './components/SimpleDebugPanel';
 import { useWebRTC } from './hooks/useWebRTC';
 import { useGroceryList } from './hooks/useGroceryList';
+import ItemConfirmationCard from './components/ItemConfirmationCard';
+import { useItemConfirmationQueue } from './hooks/useItemConfirmationQueue';
 import { formatGroceryListForExport } from './lib/utils/grocery-utils';
 
 // Inner component that uses the WebRTC hook inside the provider
@@ -25,6 +27,11 @@ function HomeContent() {
     addOrUpdateItems, 
     clearList 
   } = useGroceryList();
+
+  // Confirmation queue: commit to list after animation
+  const { currentItem, isFadingOut, enqueueItems } = useItemConfirmationQueue({
+    onCommitted: (item) => addOrUpdateItems([item])
+  });
   
   const {
     connectionState,
@@ -42,8 +49,8 @@ function HomeContent() {
       console.error('[Home] WebRTC error:', error);
     },
     onGroceryExtraction: (items: unknown) => {
-      console.log('[Home] Groceries extracted via function call:', items);
-      addOrUpdateItems(items);
+      console.log('[Home] Groceries extracted via function call (queued):', items);
+      enqueueItems(items);
     },
     onTranscriptUpdate: (transcript) => {
       console.log('[Home] Transcript update:', transcript);
@@ -100,6 +107,10 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Item Confirmation Overlay */}
+      {currentItem && (
+        <ItemConfirmationCard name={currentItem.item} fadingOut={isFadingOut} />
+      )}
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-float"></div>

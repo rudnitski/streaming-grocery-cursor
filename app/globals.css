@@ -110,7 +110,7 @@ body {
 }
 
 .animate-scale-in {
-  animation: scale-in 0.3s ease-out;
+  animation: scale-in 0.3s ease-out forwards;
 }
 
 /* Keyframes */
@@ -142,7 +142,7 @@ body {
 @keyframes scale-in {
   from {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;

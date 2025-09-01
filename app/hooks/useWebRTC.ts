@@ -43,6 +43,11 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
     initAudioContext();
     const audioContext = audioContextRef.current;
     if (!audioContext) return;
+    // Try to resume context if it is suspended
+    if (audioContext.state === 'suspended') {
+      // Best-effort resume; may require prior user gesture
+      audioContext.resume().catch(() => {});
+    }
     
     // Create a simple notification sound effect
     const oscillator = audioContext.createOscillator();
@@ -70,6 +75,16 @@ export function useWebRTC(options: UseWebRTCOptions = {}) {
       addDebugLog('audio', 'Starting WebRTC connection');
       // Reset transcript state on new connection
       currentTranscriptRef.current = '';
+      // Initialize and unlock audio context on explicit user action
+      initAudioContext();
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        try {
+          await audioContextRef.current.resume();
+          console.log('[WebRTC] AudioContext resumed');
+        } catch (e) {
+          console.warn('[WebRTC] Failed to resume AudioContext', e);
+        }
+      }
       
       console.log('[WebRTC] Creating RTCPeerConnection');
       const pc = new RTCPeerConnection();
