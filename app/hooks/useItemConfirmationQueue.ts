@@ -63,7 +63,7 @@ export function useItemConfirmationQueue({ onCommitted }: UseItemConfirmationQue
   const enqueueItems = useCallback((items: unknown) => {
     if (Array.isArray(items)) {
       const validItems = items.filter(
-        (it): it is GroceryItemWithMeasurement => !!it && typeof it === "object" && "item" in (it as any)
+        (it): it is GroceryItemWithMeasurement => !!it && typeof it === "object" && "item" in (it as object)
       );
       for (const it of validItems) {
         queueRef.current.push(it);
